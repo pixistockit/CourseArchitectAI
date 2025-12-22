@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    environment:
+      - FLASK_ENV=development
+      - PYTHONPATH=/app         # Tells Python to treat /app as a module source
+    restart: always

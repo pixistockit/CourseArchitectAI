@@ -1,0 +1,14 @@
+python-pptx
+textstat
+pyspellchecker
+flask
+jinja2
+boto3
+nltk
+pydantic
+requests
+google-generativeai
+openai
+anthropic
+mistralai
+groq
