@@ -10,15 +10,16 @@ from werkzeug.utils import secure_filename
 # --- SERVICE INITIALIZATION ---
 from services.logger_service import LoggerService
 
-# Import Custom Modules & Config
-from audit_slide.qa_tool import run_audit_slide
-from audit_slide.ai_engine import AIEngine
-from audit_slide.fix_engine import FixEngine
-import audit_slide.config as CFG 
+# --- MODIFIED: Import from the new 'modules' directory ---
+from modules.audit_slide.qa_tool import run_audit_slide
+from modules.audit_slide.ai_engine import AIEngine
+from modules.audit_slide.fix_engine import FixEngine
+import modules.audit_slide.config as CFG 
 
 # --- CONFIGURATION ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_DIR = os.path.join(BASE_DIR, 'audit_slide', 'templates')
+# --- MODIFIED: Update the template path to the new module location ---
+TEMPLATE_DIR = os.path.join(BASE_DIR, 'modules', 'audit_slide', 'templates')
 UPLOAD_FOLDER = 'data/uploads'
 OUTPUT_FOLDER = 'data/reports'
 LOG_FOLDER = 'data/logs'
@@ -34,6 +35,7 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
 logger_service = LoggerService(base_data_path='data')
 
+# --- (The rest of the file remains exactly the same as the previous version) ---
 
 # --- SMART CACHING HELPER ---
 def get_or_create_cached_report(report_id, template_name, output_filename):
@@ -75,7 +77,6 @@ def get_or_create_cached_report(report_id, template_name, output_filename):
 @app.route('/')
 def index():
     logger_service.log_system('info', 'Admin dashboard accessed', ip=request.remote_addr)
-    # MODIFIED: Pass active_page context
     return render_template('dashboard.html', active_page='dashboard')
 
 @app.route('/projects')
@@ -106,10 +107,8 @@ def projects_page():
                         logger_service.log_system('warning', f"Skipping malformed report directory {item}: {e}", ip=request.remote_addr)
     
     for p in projects: projects[p].sort(key=lambda x: x['date'], reverse=True)
-    # MODIFIED: Pass active_page context
     return render_template('projects.html', projects=projects, active_page='projects')
 
-# ... (upload_file and other routes remain unchanged) ...
 @app.route('/upload', methods=['POST'])
 def upload_file():
     ip_addr = request.remote_addr
@@ -157,7 +156,6 @@ def upload_file():
             return jsonify({"status": "error", "message": str(e)}), 500
             
     return jsonify({"status": "error", "message": "Invalid file type"}), 400
-# ... (rest of the file is identical to the previous version) ...
 
 @app.route('/view-report/<report_id>')
 def view_report(report_id):
@@ -229,7 +227,6 @@ def settings():
     if not brand_config.get('allowed_fonts'): brand_config['allowed_fonts'] = getattr(CFG, 'ALLOWED_BODY_FONTS', ['Calibri', 'Arial'])
             
     logger_service.log_system('info', "Settings page accessed", ip=request.remote_addr)
-    # MODIFIED: Pass active_page context
     return render_template('settings.html', config=llm_config, brand_config=brand_config, active_page='settings')
 
 @app.route('/save-settings', methods=['POST'])
