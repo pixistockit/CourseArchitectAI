@@ -14,14 +14,25 @@
 
         :root { 
             /* BRAND PALETTE - Corporate Clarity */
-            --primary-navy: #0A2342;       /* Trust, Authority */
-            --intelligent-teal: #005F73;   /* AI, Clarity */
-            --action-amber: #E9B44C;       /* Alerts, Issues */
-            --compliance-green: #2A9D8F;   /* Success, Valid */
-            --neutral-bg: #F4F6F8;         /* Clean Background */
+            --primary-navy: #0A2342;       
+            --intelligent-teal: #005F73;   
+            --action-amber: #E9B44C;       
+            --compliance-green: #2A9D8F;   
+            --neutral-bg: #F4F6F8;         
             --white: #FFFFFF; 
             --text-dark: #334155; 
             --text-light: #64748B; 
+            
+            /* GAGNE EVENT PALETTE */
+            --g1-attention: #94A3B8; 
+            --g2-objectives: #64748B; 
+            --g3-recall: #CBD5E1; 
+            --g4-content: #0A2342; 
+            --g5-guidance: #1E3A8A; 
+            --g6-practice: #005F73; 
+            --g7-feedback: #2A9D8F; 
+            --g8-assess: #E9B44C; 
+            --g9-retention: #B45309; 
         }
 
         body { 
@@ -34,13 +45,13 @@
             -webkit-font-smoothing: antialiased;
         }
         
-        /* HEADERS - Plus Jakarta Sans */
-        h1, h2, h3, .section-label, .kpi-value, .slide-title, .kpi-label, .cadence-label {
+        /* HEADERS */
+        h1, h2, h3, .section-label, .kpi-value, .slide-title, .kpi-label {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
-        /* DATA - IBM Plex Mono */
-        .meta, .slide-badge, .badge, .fix-details, .cadence-meta {
+        /* DATA */
+        .meta, .slide-badge, .badge, .fix-details, .cadence-meta, .log-data {
             font-family: 'IBM Plex Mono', monospace;
         }
 
@@ -86,59 +97,55 @@
         .kpi-value { font-size: 2.8rem; font-weight: 800; color: var(--text-dark); margin: 5px 0; letter-spacing: -1px; }
         .kpi-sub { font-size: 0.95rem; font-weight: 500; color: var(--text-light); margin-top: 5px; }
 
-        /* INSTRUCTIONAL CADENCE BAR & PLACEHOLDER */
+        /* CADENCE BAR */
         .cadence-container { margin-top: 30px; background: #fff; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
-        .cadence-bar-wrapper { display: flex; height: 36px; width: 100%; border-radius: 8px; overflow: hidden; margin-top: 15px; }
-        .cadence-segment { display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.8rem; transition: width 0.5s ease; position: relative; }
-        .seg-content { background-color: var(--primary-navy); }
-        .seg-engagement { background-color: var(--intelligent-teal); }
-        .seg-other { background-color: #cbd5e1; color: #475569; }
+        .cadence-bar-wrapper { display: flex; height: 40px; width: 100%; border-radius: 8px; overflow: hidden; margin-top: 15px; }
+        .cadence-segment { display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.75rem; transition: width 0.5s ease; position: relative; border-right: 1px solid rgba(255,255,255,0.2); }
+        .cadence-segment:last-child { border-right: none; }
         
-        .cadence-legend { display: flex; gap: 20px; margin-top: 15px; font-size: 0.85rem; color: var(--text-light); }
-        .legend-item { display: flex; align-items: center; gap: 8px; font-weight: 500; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .seg-1 { background-color: var(--g1-attention); }
+        .seg-2 { background-color: var(--g2-objectives); }
+        .seg-3 { background-color: var(--g3-recall); }
+        .seg-4 { background-color: var(--g4-content); }
+        .seg-5 { background-color: var(--g5-guidance); }
+        .seg-6 { background-color: var(--g6-practice); }
+        .seg-7 { background-color: var(--g7-feedback); }
+        .seg-8 { background-color: var(--g8-assess); }
+        .seg-9 { background-color: var(--g9-retention); }
+        
+        .cadence-legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 25px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-dark); }
+        .dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+        .legend-meta { color: var(--text-light); font-size: 0.8rem; margin-left: auto; font-family: 'IBM Plex Mono', monospace; }
 
-        /* Placeholder State */
-        .cadence-placeholder { 
-            background: #F8FAFC; border: 1px dashed #CBD5E1; padding: 40px; text-align: center; border-radius: 12px; margin-top: 30px; 
-        }
+        .cadence-placeholder { background: #F8FAFC; border: 1px dashed #CBD5E1; padding: 40px; text-align: center; border-radius: 12px; margin-top: 30px; }
         .cadence-placeholder h3 { font-size: 1.2rem; margin: 0 0 10px 0; color: var(--text-dark); }
         .cadence-placeholder p { font-size: 0.9rem; color: var(--text-light); max-width: 600px; margin: 0 auto 15px auto; }
         .tag-pill { background: #E0F7FA; color: #006064; padding: 2px 8px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; border: 1px solid #B2EBF2; }
 
+        /* DEBUG LOG TABLE */
+        .debug-table { width: 100%; font-size: 0.75rem; border-collapse: collapse; margin-top: 10px; }
+        .debug-table th { background: #eee; text-align: left; padding: 5px; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .debug-table td { border-bottom: 1px solid #eee; padding: 5px; font-family: 'IBM Plex Mono', monospace; color: #555; }
+        .log-row-skipped { background: #fef2f2; color: #991b1b; }
+        .log-row-funded { background: #f0fdf4; color: #166534; }
+
         .gagne-bar-container { margin-top: 15px; background: rgba(0,0,0,0.06); height: 8px; border-radius: 4px; overflow: hidden; }
         .gagne-bar-fill { height: 100%; border-radius: 4px; }
 
-        .slide-card { 
-            background: var(--white); border-radius: 12px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 30px; 
-            overflow: hidden; border: 1px solid #e2e8f0; 
-            transition: border-color 0.2s; position: relative;
-        }
-        .slide-header { 
-            background: #fff; padding: 20px 35px; border-bottom: 1px solid #f1f5f9; 
-            display: flex; justify-content: space-between; align-items: center; 
-        }
+        .slide-card { background: var(--white); border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 30px; overflow: hidden; border: 1px solid #e2e8f0; position: relative; }
+        .slide-header { background: #fff; padding: 20px 35px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
         .slide-title { font-weight: 800; font-size: 1.25rem; color: var(--primary-navy); }
-        
-        .slide-badge { 
-            background: var(--neutral-bg); color: var(--text-light); 
-            padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; 
-        }
-        .slide-card.exempt { opacity: 0.7; background: #fafafa; background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, #f4f4f4 10px, #f4f4f4 20px); }
-        .exempt-message { padding: 50px; text-align: center; color: var(--text-light); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; font-size: 0.9rem; font-family: 'IBM Plex Mono', monospace; }
+        .slide-badge { background: var(--neutral-bg); color: var(--text-light); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .slide-card.exempt { opacity: 0.7; background: #fafafa; }
         
         table { width: 100%; border-collapse: collapse; }
-        th { 
-            text-align: left; padding: 18px 35px; background: #f8fafc; 
-            color: var(--text-light); font-size: 0.75rem; text-transform: uppercase; 
-            font-weight: 700; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;
-        }
+        th { text-align: left; padding: 18px 35px; background: #f8fafc; color: var(--text-light); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; }
         td { padding: 22px 35px; border-bottom: 1px solid #f1f5f9; font-size: 1rem; vertical-align: top; color: var(--text-dark); }
         tr:last-child td { border-bottom: none; }
         
         .badge { display: inline-block; padding: 5px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
-        .badge-fail { background: rgba(233, 180, 76, 0.15); color: #B07D18; border: 1px solid rgba(233, 180, 76, 0.2); }
+        .badge-fail { background-color: rgba(233, 180, 76, 0.15); color: #B07D18; border: 1px solid rgba(233, 180, 76, 0.2); }
         .badge-warn { background-color: #FFF8E1; color: #F57F17; border: 1px solid #FFE082; }
         .badge-info { background-color: #E0F7FA; color: #006064; border: 1px solid #B2EBF2; }
         .badge-manual { background-color: #F1F5F9; color: #64748B; border: 1px solid #E2E8F0; }
@@ -148,10 +155,7 @@
         .arrow { color: var(--text-light); font-size: 1rem; }
         .fix-details { font-size: 0.85rem; color: #64748B; }
         
-        h2.section-title { 
-            color: var(--primary-navy); font-size: 1.6rem; margin-top: 60px; margin-bottom: 25px; 
-            display: flex; align-items: center; gap: 12px; font-weight: 800;
-        }
+        h2.section-title { color: var(--primary-navy); font-size: 1.6rem; margin-top: 60px; margin-bottom: 25px; display: flex; align-items: center; gap: 12px; font-weight: 800; }
         h2.section-title::before { content: ''; display: block; width: 6px; height: 28px; background: var(--intelligent-teal); border-radius: 3px; }
 
         /* --- MAGIC TOGGLE CLASS --- */
@@ -161,19 +165,11 @@
         @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; font-size: 12pt; }
             .header { box-shadow: none !important; padding: 2rem 0; color: #000; background: none; border-bottom: 2px solid #000; }
-            .header h1 { color: #000; }
-            .header .meta { color: #000; }
             .container { padding: 0; max-width: 100%; }
             .kpi-card, .slide-card, .cadence-container { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
             .slide-card { page-break-inside: avoid; }
-            .arrow, .fix-details { opacity: 1 !important; } 
-            .gagne-bar-container { background: #eee !important; }
-            .gagne-bar-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             [data-tippy-root] { display: none !important; }
-            #full-details { display: block !important; }
-            #dashboard-content { display: block !important; }
-            .cadence-placeholder { border: 1px solid #ccc !important; }
-            
+            #full-details, #dashboard-content { display: block !important; }
             h1, h2, h3, .kpi-value, .kpi-label { font-family: sans-serif !important; font-weight: bold; }
         }
     </style>
@@ -218,58 +214,175 @@
         const c = s.content_metrics;
         const p = s.pacing_metrics;
 
-        // Extract Percentage numbers
+        // Existing KPI Data (Slides Count)
         const getPct = (str) => (!str || !str.includes('(')) ? 0 : parseFloat(str.split('(')[1].replace('%)',''));
         const pctPresent = getPct(e.slides_present_content);
         const pctElicit = getPct(e.slides_elicit_performance);
-        
-        // Extract Count numbers
-        const getCnt = (str) => (!str) ? 0 : parseInt(str.split(' ')[0]);
-        const cntPresent = getCnt(e.slides_present_content);
-        const cntElicit = getCnt(e.slides_elicit_performance);
+        const cntPresent = e.slides_present_content ? parseInt(e.slides_present_content.split(' ')[0]) : 0;
+        const cntElicit = e.slides_elicit_performance ? parseInt(e.slides_elicit_performance.split(' ')[0]) : 0;
         const cntOther = parseInt(e.other_slides || 0);
+
+        // --- TIME-BASED CADENCE LOGIC ---
+        const gagneMinutes = {
+            1: { name: "Gain Attention", mins: 0 },
+            2: { name: "Inform Objectives", mins: 0 },
+            3: { name: "Stimulate Recall", mins: 0 },
+            4: { name: "Present Content", mins: 0 },
+            5: { name: "Provide Guidance", mins: 0 },
+            6: { name: "Elicit Performance", mins: 0 },
+            7: { name: "Provide Feedback", mins: 0 },
+            8: { name: "Assess Performance", mins: 0 },
+            9: { name: "Enhance Retention", mins: 0 }
+        };
+
+        const allSlides = data.slide_content || {};
+        const sortedSlideKeys = Object.keys(allSlides).sort((a,b) => parseInt(a) - parseInt(b));
         
-        // --- SMART CADENCE LOGIC ---
-        const totalTagged = cntPresent + cntElicit + cntOther;
+        let totalTimeAccumulated = 0;
+        let lastActivity = "";
+        let slidesWithTags = 0;
+        let debugRows = ""; // For the log table
+
+        sortedSlideKeys.forEach(key => {
+            const slide = allSlides[key];
+            const notes = (slide.notes || "").toLowerCase();
+            const fullText = (slide.full_text || slide.text || "").toLowerCase();
+            const sNum = slide.slide_number || key;
+            
+            // 1. Determine Time
+            let explicitTime = 0;
+            // Regex handles "Time: 5 m", "Time: 5 min", "Duration: 5m"
+            const timeMatch = notes.match(/(?:time|duration):\s*(\d+)/i) || fullText.match(/(?:time|duration):\s*(\d+)/i);
+            if (timeMatch) explicitTime = parseInt(timeMatch[1]);
+
+            // Activity Grouping
+            const actMatch = notes.match(/activity:\s*([^\n]+)/i) || fullText.match(/activity:\s*([^\n]+)/i);
+            const currentActivity = actMatch ? actMatch[1].trim().toLowerCase() : "";
+
+            let slideTimeContribution = 0;
+            let logStatus = "";
+
+            if (explicitTime > 0) {
+                // If this is a new activity OR matches previous but has explicit time again (assume user wants to add more)
+                // Actually, strict "Funding" logic means duplicate headers in sequence don't count unless activity changes
+                if (currentActivity && currentActivity === lastActivity) {
+                    slideTimeContribution = 0; // Already funded by previous slide in group
+                    logStatus = "SKIPPED (Funded by prev)";
+                } else {
+                    slideTimeContribution = explicitTime;
+                    if (currentActivity) lastActivity = currentActivity; 
+                    logStatus = "FUNDED (Explicit Time)";
+                }
+            } else {
+                // Implicit Pacing (130wpm)
+                const wordCount = (notes + " " + fullText).split(/\s+/).length;
+                slideTimeContribution = Math.max(0.5, wordCount / 130);
+                logStatus = "ESTIMATED (Word Count)";
+            }
+
+            // 2. Robust Gagné Regex Matching
+            let eventId = 0;
+            let eventNameDetected = "None";
+
+            // Order matters: Specific types first
+            if (notes.match(/elicit\s*performance|practice/i)) { eventId = 6; }
+            else if (notes.match(/present\s*content|presentation/i)) { eventId = 4; }
+            else if (notes.match(/provide\s*feedback/i)) { eventId = 7; }
+            else if (notes.match(/provide\s*guidance/i)) { eventId = 5; }
+            else if (notes.match(/assess\s*performance|assessment/i)) { eventId = 8; }
+            else if (notes.match(/gain\s*attention/i)) { eventId = 1; }
+            else if (notes.match(/inform\s*objectives/i)) { eventId = 2; }
+            else if (notes.match(/stimulate\s*recall/i)) { eventId = 3; }
+            // Improved Regex for Retention: Handles "Enhance Transfer & Retention", "Enhance Retention", etc.
+            else if (notes.match(/(?:enhance|improve)\s*(?:transfer\s*(?:&|and)\s*)?retention/i) || notes.match(/retention\s*(?:&|and)\s*transfer/i)) { eventId = 9; }
+
+            // 3. Attribute Time
+            if (eventId > 0) {
+                gagneMinutes[eventId].mins += slideTimeContribution;
+                totalTimeAccumulated += slideTimeContribution;
+                slidesWithTags++;
+                eventNameDetected = gagneMinutes[eventId].name;
+            } else {
+                logStatus += " (No Tag)";
+            }
+
+            // Build Debug Row
+            const rowClass = (eventId > 0 && slideTimeContribution > 0) ? 'log-row-funded' : 'log-row-skipped';
+            debugRows += `<tr class="${rowClass}">
+                <td>${sNum}</td>
+                <td>${eventId > 0 ? eventNameDetected : '-'}</td>
+                <td>${Math.round(slideTimeContribution * 10) / 10} min</td>
+                <td>${logStatus}</td>
+                <td style="font-size:0.65rem;">${notes.substring(0, 50)}...</td>
+            </tr>`;
+        });
+
         const totalSlides = s.total_slides_checked;
-        const tagRatio = totalSlides > 0 ? (totalTagged / totalSlides) : 0;
-        
-        // Threshold: 80% of slides must be tagged to show the full report
+        const tagRatio = totalSlides > 0 ? (slidesWithTags / totalSlides) : 0;
         const cadenceThreshold = 0.8; 
         const showCadence = tagRatio >= cadenceThreshold;
 
         let cadenceHtml = '';
         
         if (showCadence) {
-            // Adjust percentages for visual bar to sum to 100% relative to each other
-            const barPresent = (totalTagged > 0) ? Math.round((cntPresent / totalTagged) * 100) : 0;
-            const barElicit = (totalTagged > 0) ? Math.round((cntElicit / totalTagged) * 100) : 0;
-            const barOther = (totalTagged > 0) ? (100 - barPresent - barElicit) : 0;
+            let barHtml = '';
+            let legendHtml = '';
+            
+            Object.keys(gagneMinutes).forEach(key => {
+                const g = gagneMinutes[key];
+                const pct = (totalTimeAccumulated > 0) ? Math.round((g.mins / totalTimeAccumulated) * 100) : 0;
+                
+                if (pct > 0) {
+                    barHtml += `<div class="cadence-segment seg-${key}" style="width: ${pct}%" data-tooltip="${g.name}: ${Math.round(g.mins)} min (${pct}%)">${pct > 4 ? pct + '%' : ''}</div>`;
+                }
+                
+                legendHtml += `
+                <div class="legend-item">
+                    <div class="dot seg-${key}"></div> ${g.name}
+                    <span class="legend-meta">${Math.round(g.mins)} min (${pct}%)</span>
+                </div>`;
+            });
 
+            // ADDED: The Debug Log inside Details
             cadenceHtml = `
             <div class="cadence-container">
-                <div class="section-label" style="border:none; margin-bottom:10px;">Instructional Cadence Breakdown</div>
-                <div style="font-size:0.95rem; color:var(--text-light); margin-bottom:20px;">Visual distribution of slide types across the entire deck (Total Tagged: ${totalTagged}/${totalSlides}).</div>
+                <div class="section-label" style="border:none; margin-bottom:10px;">Instructional Cadence Breakdown (Time Based)</div>
+                <div style="font-size:0.95rem; color:var(--text-light); margin-bottom:20px;">
+                    Time distribution based on activity headers and pacing analysis. (Total Planned Time: ${Math.round(totalTimeAccumulated)} min).
+                </div>
                 
                 <div class="cadence-bar-wrapper">
-                    <div class="cadence-segment seg-content" style="width: ${barPresent}%" data-tooltip="Passive Content: ${barPresent}%">${barPresent > 5 ? barPresent + '%' : ''}</div>
-                    <div class="cadence-segment seg-engagement" style="width: ${barElicit}%" data-tooltip="Active Engagement: ${barElicit}%">${barElicit > 5 ? barElicit + '%' : ''}</div>
-                    <div class="cadence-segment seg-other" style="width: ${barOther}%" data-tooltip="Support/Other: ${barOther}%">${barOther > 5 ? barOther + '%' : ''}</div>
+                    ${barHtml}
                 </div>
                 
-                <div class="cadence-legend">
-                    <div class="legend-item"><div class="dot seg-content"></div> Content Delivery (Passive)</div>
-                    <div class="legend-item"><div class="dot seg-engagement"></div> Learner Engagement (Active)</div>
-                    <div class="legend-item"><div class="dot seg-other"></div> Support Slides</div>
+                <div class="cadence-legend-grid">
+                    ${legendHtml}
                 </div>
+
+                <details style="margin-top:20px; font-size:0.8rem; color:#666;">
+                    <summary style="cursor:pointer; font-weight:600; font-family:'Plus Jakarta Sans', sans-serif;">View Calculation Log (Debug)</summary>
+                    <div style="max-height:300px; overflow-y:auto; border:1px solid #eee; margin-top:10px;">
+                        <table class="debug-table">
+                            <thead><tr><th>Slide</th><th>Event</th><th>Time</th><th>Logic</th><th>Snippet</th></tr></thead>
+                            <tbody>${debugRows}</tbody>
+                        </table>
+                    </div>
+                </details>
             </div>`;
         } else {
             cadenceHtml = `
             <div class="cadence-placeholder">
                 <h3>Instructional Cadence Report Unavailable</h3>
-                <p>We could not generate a meaningful cadence timeline because fewer than 80% of your slides contain Gagné event tags.</p>
-                <p style="font-size:0.85rem;">To unlock this report, add speaker note tags like <span class="tag-pill">Instructional Activity: Present Content</span> or <span class="tag-pill">Instructional Activity: Elicit Performance</span> to your slides.</p>
+                <p>We could not generate a meaningful time-based cadence timeline because fewer than 80% of your slides contain Gagné event tags.</p>
                 <div style="font-size:0.8rem; opacity:0.7; margin-top:15px;">Current Tagged Ratio: ${Math.round(tagRatio * 100)}% (Requires 80%)</div>
+                
+                <details style="margin-top:20px; text-align:left; font-size:0.8rem; color:#666;">
+                    <summary style="cursor:pointer; font-weight:600; font-family:'Plus Jakarta Sans', sans-serif;">View Debug Log</summary>
+                    <table class="debug-table">
+                        <thead><tr><th>Slide</th><th>Event</th><th>Time</th><th>Logic</th></tr></thead>
+                        <tbody>${debugRows}</tbody>
+                    </table>
+                </details>
             </div>`;
         }
 
