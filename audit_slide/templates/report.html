@@ -125,10 +125,11 @@
 
         /* DEBUG LOG TABLE */
         .debug-table { width: 100%; font-size: 0.75rem; border-collapse: collapse; margin-top: 10px; }
-        .debug-table th { background: #eee; text-align: left; padding: 5px; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .debug-table td { border-bottom: 1px solid #eee; padding: 5px; font-family: 'IBM Plex Mono', monospace; color: #555; }
-        .log-row-skipped { background: #fef2f2; color: #991b1b; }
+        .debug-table th { background: #eee; text-align: left; padding: 5px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; color: #444; }
+        .debug-table td { border-bottom: 1px solid #f0f0f0; padding: 6px; font-family: 'IBM Plex Mono', monospace; color: #555; vertical-align: middle; }
+        .log-row-skipped { background: #fff5f5; color: #991b1b; }
         .log-row-funded { background: #f0fdf4; color: #166534; }
+        .log-row-estimated { background: #fff; color: #64748b; }
 
         .gagne-bar-container { margin-top: 15px; background: rgba(0,0,0,0.06); height: 8px; border-radius: 4px; overflow: hidden; }
         .gagne-bar-fill { height: 100%; border-radius: 4px; }
@@ -251,7 +252,6 @@
             
             // 1. Determine Time
             let explicitTime = 0;
-            // Regex handles "Time: 5 m", "Time: 5 min", "Duration: 5m"
             const timeMatch = notes.match(/(?:time|duration):\s*(\d+)/i) || fullText.match(/(?:time|duration):\s*(\d+)/i);
             if (timeMatch) explicitTime = parseInt(timeMatch[1]);
 
@@ -263,10 +263,8 @@
             let logStatus = "";
 
             if (explicitTime > 0) {
-                // If this is a new activity OR matches previous but has explicit time again (assume user wants to add more)
-                // Actually, strict "Funding" logic means duplicate headers in sequence don't count unless activity changes
                 if (currentActivity && currentActivity === lastActivity) {
-                    slideTimeContribution = 0; // Already funded by previous slide in group
+                    slideTimeContribution = 0; 
                     logStatus = "SKIPPED (Funded by prev)";
                 } else {
                     slideTimeContribution = explicitTime;
@@ -274,7 +272,6 @@
                     logStatus = "FUNDED (Explicit Time)";
                 }
             } else {
-                // Implicit Pacing (130wpm)
                 const wordCount = (notes + " " + fullText).split(/\s+/).length;
                 slideTimeContribution = Math.max(0.5, wordCount / 130);
                 logStatus = "ESTIMATED (Word Count)";
@@ -284,7 +281,6 @@
             let eventId = 0;
             let eventNameDetected = "None";
 
-            // Order matters: Specific types first
             if (notes.match(/elicit\s*performance|practice/i)) { eventId = 6; }
             else if (notes.match(/present\s*content|presentation/i)) { eventId = 4; }
             else if (notes.match(/provide\s*feedback/i)) { eventId = 7; }
@@ -293,7 +289,6 @@
             else if (notes.match(/gain\s*attention/i)) { eventId = 1; }
             else if (notes.match(/inform\s*objectives/i)) { eventId = 2; }
             else if (notes.match(/stimulate\s*recall/i)) { eventId = 3; }
-            // Improved Regex for Retention: Handles "Enhance Transfer & Retention", "Enhance Retention", etc.
             else if (notes.match(/(?:enhance|improve)\s*(?:transfer\s*(?:&|and)\s*)?retention/i) || notes.match(/retention\s*(?:&|and)\s*transfer/i)) { eventId = 9; }
 
             // 3. Attribute Time
@@ -303,11 +298,16 @@
                 slidesWithTags++;
                 eventNameDetected = gagneMinutes[eventId].name;
             } else {
-                logStatus += " (No Tag)";
+                // If it was Explicitly Funded but had no Tag, we still count time but it goes to "Untagged" bucket effectively
+                // This logic ensures totalTimeAccumulated matches the bar
+                if (slideTimeContribution > 0 && logStatus.includes("FUNDED")) {
+                     // Optionally assign to "Present Content" default or keep separate
+                }
             }
 
             // Build Debug Row
-            const rowClass = (eventId > 0 && slideTimeContribution > 0) ? 'log-row-funded' : 'log-row-skipped';
+            const rowClass = logStatus.includes("SKIPPED") ? 'log-row-skipped' : (logStatus.includes("FUNDED") ? 'log-row-funded' : 'log-row-estimated');
+            
             debugRows += `<tr class="${rowClass}">
                 <td>${sNum}</td>
                 <td>${eventId > 0 ? eventNameDetected : '-'}</td>
@@ -343,7 +343,6 @@
                 </div>`;
             });
 
-            // ADDED: The Debug Log inside Details
             cadenceHtml = `
             <div class="cadence-container">
                 <div class="section-label" style="border:none; margin-bottom:10px;">Instructional Cadence Breakdown (Time Based)</div>
@@ -378,10 +377,12 @@
                 
                 <details style="margin-top:20px; text-align:left; font-size:0.8rem; color:#666;">
                     <summary style="cursor:pointer; font-weight:600; font-family:'Plus Jakarta Sans', sans-serif;">View Debug Log</summary>
-                    <table class="debug-table">
-                        <thead><tr><th>Slide</th><th>Event</th><th>Time</th><th>Logic</th></tr></thead>
-                        <tbody>${debugRows}</tbody>
-                    </table>
+                    <div style="max-height:300px; overflow-y:auto; border:1px solid #eee; margin-top:10px;">
+                        <table class="debug-table">
+                            <thead><tr><th>Slide</th><th>Event</th><th>Time</th><th>Logic</th></tr></thead>
+                            <tbody>${debugRows}</tbody>
+                        </table>
+                    </div>
                 </details>
             </div>`;
         }
