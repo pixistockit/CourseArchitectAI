@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditSlide AI Report - {{ summary.presentation_name }}</title>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css"/>
+    
+    <style>
+        :root { --primary-navy: #0A2342; --intelligent-teal: #005F73; --action-amber: #E9B44C; --compliance-green: #2A9D8F; --neutral-bg: #F4F6F8; --white: #FFFFFF; --text-dark: #333333; --text-light: #777777; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--neutral-bg); color: var(--text-dark); margin: 0; padding: 0; line-height: 1.6; }
+        
+        /* HEADER */
+        .header { background: linear-gradient(135deg, var(--primary-navy) 0%, #163a66 100%); color: var(--white); padding: 2.5rem 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(10, 35, 66, 0.2); }
+        .header h1 { margin: 0; font-size: 2rem; font-weight: 700; letter-spacing: 0.5px; }
+        .header .meta { text-align: right; font-size: 0.9rem; opacity: 0.9; }
+        
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        .dashboard-section { margin-bottom: 40px; }
+        .section-label { font-size: 0.85rem; text-transform: uppercase; color: var(--text-light); letter-spacing: 1.2px; font-weight: 700; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 5px; display: inline-block; }
+        
+        /* KPI GRIDS & CARDS */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+        .kpi-card { background: var(--white); padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); position: relative; overflow: hidden; border-top: 4px solid transparent; }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        .kpi-total { border-color: var(--primary-navy); } .kpi-warn { border-color: var(--action-amber); background: #FFFDF8; }
+        .kpi-pass { border-color: var(--compliance-green); background: #F8FFFE; } .kpi-teal { border-color: var(--intelligent-teal); background: #F7FBFC; }
+        
+        /* Interactive Labels (No more CSS tooltips) */
+        .kpi-label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-light); letter-spacing: 1px; font-weight: 700; display: inline-block; border-bottom: 1px dotted #999; cursor: help; }
+        
+        .kpi-value { font-size: 2.2rem; font-weight: 800; color: var(--primary-navy); margin: 10px 0 5px 0; }
+        .kpi-sub { font-size: 0.9rem; font-weight: 500; }
+
+        /* GAGNE BARS */
+        .gagne-bar-container { margin-top: 15px; background: rgba(0,0,0,0.05); height: 8px; border-radius: 4px; overflow: hidden; }
+        .gagne-bar-fill { height: 100%; border-radius: 4px; }
+        .fill-passive { background-color: var(--primary-navy); } .fill-active { background-color: var(--intelligent-teal); }
+        
+        /* SLIDE CARDS */
+        .slide-card { background: var(--white); border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 30px; overflow: hidden; border: 1px solid #eee; transition: border-color 0.2s; position: relative;}
+        .slide-card:hover { border-color: #ddd; }
+        .slide-header { background: #fff; padding: 20px 30px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .slide-title { font-weight: 700; font-size: 1.2rem; color: var(--primary-navy); }
+        .slide-badge { background: var(--neutral-bg); color: var(--text-light); padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .slide-card.exempt { opacity: 0.7; background: #fafafa; background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, #f4f4f4 10px, #f4f4f4 20px); }
+        .exempt-message { padding: 40px; text-align: center; color: var(--text-light); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; font-size: 0.9rem; }
+        
+        /* TABLE STYLES */
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 15px 30px; background: #fafafa; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; font-weight: 600; }
+        td { padding: 18px 30px; border-bottom: 1px solid #f5f5f5; font-size: 0.95rem; vertical-align: top;}
+        tr:last-child td { border-bottom: none; }
+        .badge { display: inline-block; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
+        .badge-fail { background-color: rgba(233, 180, 76, 0.15); color: #B07D18; }
+        .badge-warn { background-color: #FFF8E1; color: #F57F17; }
+        .badge-info { background-color: #E0F7FA; color: #006064; }
+        .badge-manual { background-color: #F5F5F5; color: #616161; }
+        .swatch-container { display: flex; align-items: center; gap: 12px; margin-bottom: 5px; }
+        .swatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.1); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .arrow { color: var(--text-light); font-size: 1rem; }
+        .fix-details { font-size: 0.9rem; color: #555; }
+        h2.section-title { color: var(--primary-navy); font-size: 1.5rem; margin-top: 40px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        h2.section-title::before { content: ''; display: block; width: 6px; height: 24px; background: var(--intelligent-teal); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="header"><div><h1>AuditSlide AI</h1><div style="font-size: 1rem; opacity: 0.9; font-weight: 300;">Automated Quality Assurance Report</div></div><div class="meta"><div style="margin-bottom:4px;"><strong>File:</strong> {{ summary.presentation_name }}</div><div><strong>Date:</strong> {{ summary.date_generated[:10] }}</div></div></div>
+    <div class="container">
+        
+        <div class="dashboard-section"><div class="section-label">Technical Health & Compliance</div><div class="kpi-grid">
+            <div class="kpi-card kpi-total"><div class="kpi-label" data-tooltip="Total slides scanned in this audit session.">Total Slides</div><div class="kpi-value">{{ summary.total_slides_checked }}</div><div class="kpi-sub">Analyzed</div></div>
+            <div class="kpi-card kpi-warn"><div class="kpi-label" data-tooltip="Total individual issues found across all slides.">Total Findings</div><div class="kpi-value">{{ summary.total_errors }}</div><div class="kpi-sub" style="color:var(--action-amber)">Require Attention</div></div>
+            <div class="kpi-card kpi-pass"><div class="kpi-label" data-tooltip="Percentage of slides with ZERO accessibility errors.">WCAG Compliance</div><div class="kpi-value">{{ summary.executive_metrics.wcag_compliance_rate }}%</div><div class="kpi-sub" style="color:var(--compliance-green)">Pass Rate</div></div>
+            <div class="kpi-card"><div class="kpi-label" data-tooltip="Items like text-on-images that require human eyes.">Manual Reviews</div><div class="kpi-value">{{ summary.manual_reviews }}</div><div class="kpi-sub">Items for Human Check</div></div>
+        </div></div>
+        
+        <div class="dashboard-section"><div class="section-label">Instructional Integrity (Gagné's 9 Events)</div><div class="kpi-grid">
+            <div class="kpi-card kpi-total"><div class="kpi-label" data-tooltip="Slides tagged as 'Present Content' in notes.">Content Delivery</div><div class="kpi-value">{{ summary.executive_metrics.slides_present_content.split(' ')[0] }}</div><div class="kpi-sub">Slides "Present Content"</div>{% set pct_present = summary.executive_metrics.slides_present_content.split('(')[1].replace('%)', '') %}<div class="gagne-bar-container"><div class="gagne-bar-fill fill-passive" style="width: {{ pct_present }}%"></div></div><div style="font-size:0.75rem; color:#888; margin-top:5px; text-align:right;">{{ pct_present }}% of Course</div></div>
+            <div class="kpi-card kpi-teal"><div class="kpi-label" data-tooltip="Slides tagged as 'Elicit Performance' (Activities).">Learner Engagement</div><div class="kpi-value">{{ summary.executive_metrics.slides_elicit_performance.split(' ')[0] }}</div><div class="kpi-sub" style="color:var(--intelligent-teal)">Slides "Elicit Performance"</div>{% set pct_elicit = summary.executive_metrics.slides_elicit_performance.split('(')[1].replace('%)', '') %}<div class="gagne-bar-container"><div class="gagne-bar-fill fill-active" style="width: {{ pct_elicit }}%"></div></div><div style="font-size:0.75rem; color:#888; margin-top:5px; text-align:right;">{{ pct_elicit }}% of Course</div></div>
+            <div class="kpi-card"><div class="kpi-label" data-tooltip="Intros, Objectives, Reviews, and other structure.">Support Slides</div><div class="kpi-value">{{ summary.executive_metrics.other_slides }}</div><div class="kpi-sub">Intro, Objectives, Reviews</div></div>
+        </div></div>
+
+        <div class="dashboard-section"><div class="section-label">Content Quality & Voice</div><div class="kpi-grid">
+            <div class="kpi-card kpi-warn"><div class="kpi-label" data-tooltip="Slides exceeding the Configured Reading Level (e.g., Grade 9).">Reading Complexity</div><div class="kpi-value">{{ summary.content_metrics.reading_complexity_fails }}</div><div class="kpi-sub" style="color:var(--action-amber)">Slides > Grade Target</div></div>
+            <div class="kpi-card kpi-teal">
+                <div class="kpi-label" data-tooltip="Phrases using Passive Voice vs Active. <br>Ex: 'Files were deleted by user' (Passive) <br>vs 'User deleted files' (Active).">Voice & Tone</div>
+                <div class="kpi-value">{{ summary.content_metrics.passive_voice_count }}</div>
+                <div class="kpi-sub" style="color:var(--intelligent-teal)">Passive Voice Alerts</div>
+            </div>
+            <div class="kpi-card"><div class="kpi-label" data-tooltip="Words found in your 'Client Blacklist' config.">Brand Jargon</div><div class="kpi-value">{{ summary.content_metrics.jargon_count }}</div><div class="kpi-sub">Blacklisted Words</div></div>
+        </div></div>
+
+        <div class="dashboard-section"><div class="section-label">Pacing & Seat Time</div><div class="kpi-grid">
+            
+            {% set planned = summary.pacing_metrics.total_planned_mins %}
+            {% set projected = summary.pacing_metrics.total_projected_mins %}
+            {% set diff = (projected - planned)|abs %}
+            {% set threshold = planned * 0.1 %}
+            {% set is_good = diff <= threshold %}
+            
+            <div class="kpi-card {{ 'kpi-pass' if is_good else 'kpi-warn' }}">
+                <div class="kpi-label" data-tooltip="Smart Calculation: Uses Explicit Time if set, otherwise estimates based on word count.">Projected Duration</div>
+                <div class="kpi-value">{{ projected|round|int }} min</div>
+                <div class="kpi-sub">
+                    {% if is_good %}
+                        <span style="color:var(--compliance-green); font-weight:700;">✓ On Track</span> (within 10%)
+                    {% else %}
+                        <span style="color:var(--action-amber); font-weight:700;">⚠ Variance: {{ diff|round|int }} min</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="kpi-card kpi-teal">
+                <div class="kpi-label" data-tooltip="Sum of all 'Time: X mins' headers found in notes.">Explicitly Planned</div>
+                <div class="kpi-value">{{ planned|round|int }} min</div>
+                <div class="kpi-sub" style="color:var(--intelligent-teal)">Sum of 'Time:' Headers</div>
+            </div>
+            
+            {% set max_sec = summary.pacing_metrics.sections|sort(attribute='projected', reverse=True)|first %}
+            <div class="kpi-card">
+                <div class="kpi-label" data-tooltip="The section with the longest duration relative to others.">Heaviest Section</div>
+                <div class="kpi-value" style="font-size:1.5rem; margin-top:15px;">{{ max_sec.name[:20] }}...</div>
+                <div class="kpi-sub">{{ max_sec.projected|round|int }} mins ({{ max_sec.slide_count }} slides)</div>
+            </div>
+        </div></div>
+
+        <h2 class="section-title">Detailed Findings</h2>
+        {% for slide_num, issues in grouped_issues.items() %}
+        {% set is_exempt = issues|selectattr("result", "equalto", "EXEMPT")|list|length > 0 %}
+        <div class="slide-card {{ 'exempt' if is_exempt else '' }}">
+            <div class="slide-header"><div class="slide-title">Slide {{ slide_num }}</div><span class="slide-badge">{{ issues|length if not is_exempt else 'Skipped' }}</span></div>
+            {% if is_exempt %}
+            <div class="exempt-message">• EXEMPT FROM ANALYSIS •<br><span style="font-size:0.8rem; font-weight:400; opacity:0.7;">This slide was excluded by configuration.</span></div>
+            {% else %}
+            <table>
+                <thead><tr><th width="15%">Category</th><th width="15%">Shape</th><th width="40%">Details & Context</th><th width="30%">Recommended Action</th></tr></thead>
+                <tbody>
+                    {% for issue in issues %}
+                    <tr>
+                        <td>
+                            {% if issue.result == 'FAIL' %}<span class="badge badge-fail">Attention</span>{% elif issue.result == 'WARNING' %}<span class="badge badge-warn">Warning</span>{% elif issue.result == 'MANUAL REVIEW' %}<span class="badge badge-manual">Review</span>{% else %}<span class="badge badge-info">Info</span>{% endif %}
+                            <div style="font-size:0.75rem; margin-top:6px; color:var(--text-light); font-weight:600;">{{ issue.check }}</div>
+                        </td>
+                        <td><strong>{{ issue.shape_name }}</strong></td>
+                        <td>{{ issue.details }}{% if issue.colors_used %}<br><span style="font-size:0.8rem; color:#888; font-family:monospace; display:block; margin-top:4px;">{{ issue.colors_used }}</span>{% endif %}</td>
+                        <td>
+                            {% if issue.suggested_fix_color %}
+                                <div class="swatch-container"><div class="swatch" style="background-color: rgb{{ issue.original_bg_rgb }};" title="Background"></div><div class="swatch" style="background-color: rgb{{ issue.original_text_rgb }};" title="Current Text"></div><div class="arrow">➜</div><div class="swatch" style="background-color: rgb{{ issue.suggested_fix_color_tuple }};" title="Suggested Text"></div></div><div class="fix-details">Adjust text color to passing standard.</div>
+                            {% elif "Font" in issue.check %}
+                                {% if "size" in issue.details %}<div class="fix-details">Increase size (Min 25pt).</div>{% elif "Bold" in issue.details %}<div class="fix-details">Make <strong>Bold</strong>.</div>{% else %}<div class="fix-details">Change to <strong>Rockwell</strong>.</div>{% endif %}
+                            {% elif "Spelling" in issue.check %}<div class="fix-details">Review text for typos.</div>
+                            {% elif "Alt Text" in issue.check %}<div class="fix-details">Add descriptive text or mark decorative.</div>
+                            {% elif "Reading Order" in issue.check %}<div class="fix-details">Adjust Z-Order in Selection Pane.</div>
+                            {% elif "Instructional Design" in issue.check %}<div class="fix-details">Review Speaker Notes content.</div>
+                            {% elif "Quote" in issue.check %}<div class="fix-details">Verify if quotes are used correctly.</div>
+                            {% elif "Clarity" in issue.check %}<div class="fix-details">Simplify text or switch to Active Voice.</div>
+                            {% elif "Brand Voice" in issue.check %}<div class="fix-details">Replace jargon with simpler terms.</div>
+                            {% else %}<div class="fix-details">Refer to details.</div>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    
+    <script>
+        tippy('[data-tooltip]', {
+            content: (reference) => reference.getAttribute('data-tooltip'),
+            theme: 'light-border',
+            animation: 'scale',
+            placement: 'top',
+            arrow: true,
+            allowHTML: true, // ENABLE HTML CONTENT
+        });
+    </script>
+</body>
+</html>

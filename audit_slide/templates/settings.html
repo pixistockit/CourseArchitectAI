@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditSlide - Settings</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --navy: #0A2342; --teal: #005F73; --bg: #F4F6F8; --white: #FFF; --border: #E1E4E8; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; color: #333; }
+        .sidebar { width: 260px; background: var(--navy); color: white; display: flex; flex-direction: column; padding: 20px; }
+        .brand { font-size: 1.5rem; font-weight: 700; margin-bottom: 40px; display: flex; align-items: center; gap: 10px; }
+        .nav-item { padding: 12px 15px; color: rgba(255,255,255,0.7); text-decoration: none; border-radius: 8px; margin-bottom: 5px; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; }
+        .nav-item.btn-new { background: var(--teal); color: white; margin-top: 20px; justify-content: center; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .main { flex: 1; overflow-y: auto; padding: 40px; padding-bottom: 100px; }
+        .header { margin-bottom: 30px; border-bottom: 1px solid #ccc; padding-bottom: 20px; }
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; max-width: 1200px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+        .card-title { font-size: 1.1rem; font-weight: 700; color: var(--navy); margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 600; font-size: 0.9rem; color: #444; margin-bottom: 6px; }
+        .form-group small { display: block; color: #666; font-size: 0.85rem; margin-bottom: 8px; line-height: 1.5; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; }
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .toggle-switch { position: relative; width: 50px; height: 26px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--teal); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        /* FIXED TOOLTIP STYLE */
+        .tooltip-icon { color: var(--teal); cursor: help; margin-left: 5px; position: relative; display: inline-block; }
+        .tooltip-icon:hover::after { 
+            content: attr(data-tip); 
+            position: absolute; 
+            left: 100%; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            background: #2d3748; 
+            color: #fff; 
+            padding: 10px 14px; 
+            border-radius: 6px; 
+            font-size: 0.75rem; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            z-index: 100; 
+            margin-left: 10px; 
+            pointer-events: none;
+            white-space: normal;      
+            width: 220px;             
+            line-height: 1.4;         
+            text-align: left;         
+            letter-spacing: 0.8px;    
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .provider-section { display: none; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef; margin-top: 15px; animation: fadeIn 0.3s ease; }
+        .provider-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn-save { position: fixed; bottom: 30px; right: 30px; background: var(--teal); color: white; border: none; padding: 15px 40px; border-radius: 30px; font-weight: 700; cursor: pointer; box-shadow: 0 5px 20px rgba(0,95,115,0.4); z-index: 100; }
+        #msg { position: fixed; bottom: 90px; right: 30px; background: #2A9D8F; color: white; font-weight: 600; display: none; padding: 12px 20px; border-radius: 8px; z-index: 200; }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <div class="brand"><i class="fas fa-layer-group"></i> AuditSlide</div>
+    <a href="/" class="nav-item"><i class="fas fa-th-large"></i> Dashboard</a>
+    <a href="/" class="nav-item"><i class="fas fa-folder"></i> All Projects</a>
+    <a href="/settings" class="nav-item active"><i class="fas fa-cog"></i> Settings</a>
+    <a href="/new-audit" class="nav-item btn-new"><i class="fas fa-plus"></i> New Audit</a>
+</div>
+<div class="main">
+    <div class="header"><h1>Global Configuration</h1><p style="color:#666; margin-top:5px;">Define standards and connect AI Brains.</p></div>
+    <form id="settings-form">
+        <div class="settings-grid">
+            
+            <div class="card" style="border-left: 5px solid #E9B44C;">
+                <div class="card-title"><i class="fas fa-sitemap"></i> Agent Orchestration</div>
+                
+                <div class="form-group">
+                    <label>Agent 1: Slide Forensic (Micro)</label>
+                    <select name="agent_1_provider">
+                        <option value="GEMINI" {% if config.agent_1_provider == 'GEMINI' %}selected{% endif %}>Gemini (Flash Lite)</option>
+                        <option value="GROQ" {% if config.agent_1_provider == 'GROQ' %}selected{% endif %}>Groq (GPT-OSS)</option>
+                        <option value="MISTRALAI" {% if config.agent_1_provider == 'MISTRALAI' %}selected{% endif %}>Mistral (Small)</option>
+                        <option value="AWS_BEDROCK" {% if config.agent_1_provider == 'AWS_BEDROCK' %}selected{% endif %}>AWS Bedrock (Haiku)</option>
+                        <option value="OPENAI" {% if config.agent_1_provider == 'OPENAI' %}selected{% endif %}>OpenAI (Nano)</option>
+                        <option value="ANTHROPIC" {% if config.agent_1_provider == 'ANTHROPIC' %}selected{% endif %}>Anthropic (Sonnet)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Agent 2: Pedagogical Theorist</label>
+                    <select name="agent_2_provider">
+                        <option value="SAME_AS_AGENT_1" {% if config.agent_2_provider == 'SAME_AS_AGENT_1' %}selected{% endif %}>↳ Same as Agent 1 (Default)</option>
+                        <option value="GEMINI" {% if config.agent_2_provider == 'GEMINI' %}selected{% endif %}>Gemini (Flash)</option>
+                        <option value="MISTRALAI" {% if config.agent_2_provider == 'MISTRALAI' %}selected{% endif %}>Mistral (Small)</option>
+                        <option value="GROQ" {% if config.agent_2_provider == 'GROQ' %}selected{% endif %}>Groq (Llama 3)</option>
+                        <option value="AWS_BEDROCK" {% if config.agent_2_provider == 'AWS_BEDROCK' %}selected{% endif %}>AWS Bedrock (Sonnet)</option>
+                        <option value="OPENAI" {% if config.agent_2_provider == 'OPENAI' %}selected{% endif %}>OpenAI (GPT-4 Mini)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Agent 3: Chief Strategist (Macro)</label>
+                    <select name="agent_3_provider">
+                        <option value="SAME_AS_AGENT_1" {% if config.agent_3_provider == 'SAME_AS_AGENT_1' %}selected{% endif %}>↳ Same as Agent 1 (Default)</option>
+                        <option value="GEMINI" {% if config.agent_3_provider == 'GEMINI' %}selected{% endif %}>Gemini (Flash)</option>
+                        <option value="MISTRALAI" {% if config.agent_3_provider == 'MISTRALAI' %}selected{% endif %}>Mistral (Medium)</option>
+                        <option value="AWS_BEDROCK" {% if config.agent_3_provider == 'AWS_BEDROCK' %}selected{% endif %}>AWS Bedrock (Nova Pro)</option>
+                        <option value="OPENAI" {% if config.agent_3_provider == 'OPENAI' %}selected{% endif %}>OpenAI (GPT-5)</option>
+                        <option value="GROQ" {% if config.agent_3_provider == 'GROQ' %}selected{% endif %}>Groq (Llama 3)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="card" style="border-left: 5px solid var(--teal);">
+                <div class="card-title"><i class="fas fa-key"></i> Provider Keys</div>
+                
+                <div class="form-group">
+                    <label>Select Provider to Configure</label>
+                    <select id="provider-selector" onchange="showProviderSettings(this.value)">
+                        <option value="GEMINI">Google Gemini</option>
+                        <option value="OPENAI">OpenAI</option>
+                        <option value="ANTHROPIC">Anthropic</option>
+                        <option value="GROQ">Groq</option>
+                        <option value="MISTRALAI">Mistral AI</option>
+                        <option value="AWS_BEDROCK">AWS Bedrock</option>
+                    </select>
+                </div>
+
+                <div id="settings-GEMINI" class="provider-section active">
+                    <div class="form-group"><label>Gemini API Key</label><input type="password" name="gemini_api_key" value="{{ config.gemini_api_key }}" placeholder="AIzaSy..."></div>
+                </div>
+
+                <div id="settings-OPENAI" class="provider-section">
+                    <div class="form-group"><label>OpenAI API Key</label><input type="password" name="openai_api_key" value="{{ config.openai_api_key }}" placeholder="sk-..."></div>
+                </div>
+
+                <div id="settings-ANTHROPIC" class="provider-section">
+                    <div class="form-group"><label>Anthropic API Key</label><input type="password" name="anthropic_api_key" value="{{ config.anthropic_api_key }}" placeholder="sk-ant-..."></div>
+                </div>
+
+                <div id="settings-GROQ" class="provider-section">
+                    <div class="form-group"><label>Groq API Key</label><input type="password" name="groq_api_key" value="{{ config.groq_api_key }}" placeholder="gsk_..."></div>
+                </div>
+
+                <div id="settings-MISTRALAI" class="provider-section">
+                    <div class="form-group"><label>Mistral API Key</label><input type="password" name="mistral_api_key" value="{{ config.mistral_api_key }}" placeholder="..."></div>
+                </div>
+
+                <div id="settings-AWS_BEDROCK" class="provider-section">
+                    <label style="margin-bottom:10px; display:block; color:#666;">AWS Bedrock Credentials</label>
+                    <div class="form-group"><input type="text" name="aws_access_key" value="{{ config.aws_access_key }}" placeholder="Access Key ID"></div>
+                    <div class="form-group"><input type="password" name="aws_secret_key" value="{{ config.aws_secret_key }}" placeholder="Secret Access Key"></div>
+                    <div class="form-group"><input type="text" name="aws_region" value="{{ config.aws_region }}" placeholder="Region (e.g. us-east-1)"></div>
+                </div>
+
+            </div>
+            
+            <div class="card" style="border-left: 5px solid #6366f1;">
+                <div class="card-title"><i class="fas fa-magic"></i> Brand & Auto-Fixer Rules</div>
+                <div class="form-group"><label>Title Font (Fixer Target)</label><input type="text" name="title_font" value="{{ brand_config.title_font or 'Rockwell' }}" placeholder="Rockwell"></div>
+                <div class="form-group"><label>Body Font (Fixer Target)</label><input type="text" name="body_font" value="{{ brand_config.body_font or 'Calibri' }}" placeholder="Calibri"></div>
+                <div class="form-group"><label>Body Font Size (Fixer Target)</label><input type="number" name="body_font_size" value="{{ brand_config.body_font_size or '24' }}" placeholder="24"></div>
+                <div class="form-group"><label>Allowed Body Fonts (Analyzer Rules)</label><small>Comma-separated list.</small><input type="text" name="allowed_fonts" value="{{ brand_config.allowed_fonts|join(', ') if brand_config.allowed_fonts else 'Calibri, MV Boli, Arial' }}" placeholder="Calibri, Arial, Verdana"></div>
+                <div class="form-group"><label>Notes Font</label><input type="text" name="notes_font" value="{{ brand_config.notes_font or 'Calibri' }}" placeholder="Calibri"></div>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                    <h4 style="margin-top:0; color:#475569; font-size:0.9rem; text-transform:uppercase;">AI Exemption Rules</h4>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="exempt_first" name="exempt_first_slide" {% if brand_config.exempt_first_slide %}checked{% endif %}>
+                        <label for="exempt_first">Skip First Slide (Title)</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="exempt_last" name="exempt_last_slide" {% if brand_config.exempt_last_slide %}checked{% endif %}>
+                        <label for="exempt_last">Skip Last Slide</label>
+                    </div>
+
+                    <div class="form-group" style="margin-top:10px;">
+                        <label>Specific Slides to Skip (comma separated)</label>
+                        <input type="text" name="exempt_specific_slides" value="{{ brand_config.exempt_specific_slides }}" placeholder="e.g. 5, 10, 12">
+                    </div>
+                </div>                
+            </div>
+
+            <div class="card">
+                <div class="card-title"><i class="fas fa-graduation-cap"></i> Instructional Standards</div>
+                <div class="form-group"><label>Target Grade Level</label><input type="number" name="default_grade" value="{{ config.default_grade }}" min="1" max="18"></div>
+                
+                <div class="form-group">
+                    <label>Activity Buffer (Min) 
+                        <i class="fas fa-question-circle tooltip-icon" data-tip="Time added for interactive activities (e.g., discussions, polls). Default is 5.0 minutes."></i>
+                    </label>
+                    <input type="number" name="default_buffer" value="{{ config.default_buffer }}" step="0.1" min="0">
+                </div>
+
+                <div class="form-group"><label>Max Words Per Slide</label><input type="number" name="max_words_per_slide" value="{{ config.max_words_per_slide }}"></div>
+                
+                <div class="form-group" style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+                    <label>Speaker Notes Schema 
+                        <i class="fas fa-question-circle tooltip-icon" data-tip="Required headers. One per line. Order matters."></i>
+                    </label>
+                    <small>Include "Time:" or "Duration:" for accurate pacing reports.</small>
+                    <textarea name="required_headers" rows="6" placeholder="Instructional Activity:&#10;Instructional Time:&#10;Materials:&#10;Do:&#10;Talking Points:">{{ brand_config.required_headers|join('\n') if brand_config.required_headers else "Instructional Activity:\nInstructional Time:\nMaterials:\nDo:\nTalking Points:" }}</textarea>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><i class="fas fa-universal-access"></i> Accessibility (WCAG)</div>
+                <div class="form-group"><label>Contrast Ratio Threshold</label><input type="number" name="contrast_ratio" value="{{ config.contrast_ratio }}" step="0.1"></div>
+                <div class="form-group"><label>Minimum Font Size (pt) <small>(Audit Threshold)</small></label><input type="number" name="min_font_size" value="{{ config.min_font_size }}"></div>
+                <div class="form-group"><label>Compliance Strictness</label><select name="wcag_strictness"><option value="aa">AA</option><option value="aaa">AAA</option></select></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><i class="fas fa-award"></i> Quality & Brand</div>
+                <div class="form-group">
+                    <label>Global Jargon Blacklist <i class="fas fa-question-circle tooltip-icon" data-tip="Words to flag or replace in the audit."></i></label>
+                    <small>One entry per line. Format: <b>BadWord</b> on a single line means (Flag only) OR adding a colon like <b>BadWord: GoodWord</b> on a single line means (Flag & Suggest) replacement word provided).</small>
+                    <textarea name="blacklist" rows="6" placeholder="utilize: use&#10;facilitate: help&#10;synergy">{{ config.blacklist_display }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Speaker Notes Scripting Level</label>
+                    <div class="select-wrapper">
+                        <select name="notes_scripting_level">
+                            <option value="Basic" {% if brand_config.notes_scripting_level == 'Basic' %}selected{% endif %}>Basic (Directive / Outline)</option>
+                            <option value="Light" {% if brand_config.notes_scripting_level == 'Light' or not brand_config.notes_scripting_level %}selected{% endif %}>Light (Conversational / Default)</option>
+                            <option value="Heavy" {% if brand_config.notes_scripting_level == 'Heavy' %}selected{% endif %}>Heavy (Verbatim Script)</option>
+                        </select>
+                    </div>
+                    <div class="help-text">
+                        <strong>Basic:</strong> "Explain the concept."<br>
+                        <strong>Light:</strong> "Here is the concept..." (Conversational)<br>
+                        <strong>Heavy:</strong> "The concept is defined as..." (Word-for-word)
+                    </div>
+                </div>                
+                <div class="toggle-row"><span>Check Spelling</span><label class="toggle-switch"><input type="checkbox" name="check_spelling" value="true" {% if config.check_spelling == 'true' %}checked{% endif %}><span class="slider"></span></label></div>
+                <div class="toggle-row"><span>Check Grammar</span><label class="toggle-switch"><input type="checkbox" name="check_grammar" value="true" {% if config.check_grammar == 'true' %}checked{% endif %}><span class="slider"></span></label></div>
+            </div>
+
+        </div>
+        <div id="msg"><i class="fas fa-check-circle"></i> Saved!</div>
+        <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Configuration</button>
+    </form>
+</div>
+<script>
+    function showProviderSettings(provider) {
+        document.querySelectorAll('.provider-section').forEach(el => el.classList.remove('active'));
+        const target = document.getElementById(`settings-${provider}`);
+        if(target) target.classList.add('active');
+    }
+
+    document.getElementById('settings-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.querySelector('.btn-save');
+        const msg = document.getElementById('msg');
+        btn.disabled = true; btn.innerText = "Saving...";
+        
+        const formData = new FormData(e.target);
+        if(!e.target.check_spelling.checked) formData.set('check_spelling', 'false');
+        if(!e.target.check_grammar.checked) formData.set('check_grammar', 'false');
+        
+        await fetch('/save-settings', { method: 'POST', body: formData });
+        
+        btn.disabled = false; btn.innerText = "Save Configuration";
+        msg.style.display = "block"; setTimeout(() => { msg.style.display = "none"; }, 3000);
+    };
+</script>
+</body>
+</html>

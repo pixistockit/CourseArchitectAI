@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditSlide AI - Launchpad</title>
+    <style>
+        :root { --primary-navy: #0A2342; --intelligent-teal: #005F73; --action-amber: #E9B44C; --white: #FFFFFF; --neutral-bg: #F4F6F8; --border: #E0E0E0; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--neutral-bg); margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .launch-card { background: var(--white); padding: 40px; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
+        .logo-area h1 { color: var(--primary-navy); margin: 0; font-size: 2rem; }
+        .logo-area p { color: #666; margin-bottom: 30px; }
+        .upload-zone { border: 2px dashed #ccc; padding: 40px; border-radius: 12px; cursor: pointer; transition: all 0.3s; position: relative; }
+        .upload-zone:hover { border-color: var(--intelligent-teal); background: #f0f8f9; }
+        .upload-zone.dragover { border-color: var(--action-amber); background: #fffdf5; }
+        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 25px 0; text-align: left; }
+        .config-item label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 5px; text-transform: uppercase; }
+        .config-item input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; transition: border 0.2s; }
+        .config-item input:focus { outline: none; border-color: var(--intelligent-teal); box-shadow: 0 0 0 3px rgba(0, 95, 115, 0.1); }
+        .modern-select {
+            width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; color: #333;
+            appearance: none; -webkit-appearance: none; background-color: white;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23005F73%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat; background-position: right 15px center; background-size: 12px; cursor: pointer;
+        }
+        .modern-select:focus { outline: none; border-color: var(--intelligent-teal); box-shadow: 0 0 0 3px rgba(0, 95, 115, 0.1); }
+        .btn-audit { background: var(--primary-navy); color: white; border: none; padding: 15px 30px; border-radius: 8px; font-weight: 700; width: 100%; cursor: pointer; font-size: 1rem; transition: transform 0.2s; }
+        .btn-audit:hover { transform: scale(1.02); background: #163a66; }
+        #progress-container { display: none; margin-top: 20px; }
+        .progress-bar { background: #eee; height: 10px; border-radius: 5px; overflow: hidden; }
+        .progress-fill { background: var(--intelligent-teal); height: 100%; width: 0%; transition: width 0.5s; }
+        .nav-back { position: absolute; top: 20px; left: 20px; text-decoration: none; color: var(--primary-navy); font-weight: 600; display: flex; align-items: center; gap: 8px; padding: 10px 15px; border-radius: 8px; transition: background 0.2s; font-size: 0.9rem; }
+        .nav-back:hover { background: rgba(10, 35, 66, 0.05); color: var(--intelligent-teal); }
+        .project-toggle { display: flex; gap: 10px; margin-bottom: 15px; background: #F0F4F8; padding: 4px; border-radius: 8px; }
+        .toggle-btn { flex: 1; padding: 8px; font-size: 0.85rem; background: transparent; border: none; cursor: pointer; border-radius: 6px; color: #666; font-weight: 600; transition: 0.2s; }
+        .toggle-btn.active { background: white; color: var(--intelligent-teal); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <a href="/" class="nav-back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Dashboard
+    </a>    
+    <div class="launch-card">
+        <div class="logo-area">
+            <h1>AuditSlide AI</h1>
+            <p>Upload your PPTX for forensic ID analysis</p>
+        </div>
+        <form id="upload-form" enctype="multipart/form-data">
+            <div class="upload-zone" id="drop-zone">
+                <div id="file-label">Drag & Drop PPTX here<br><small>or click to browse</small></div>
+                <input type="file" id="file-input" name="file" accept=".pptx" style="display:none">
+            </div>
+            <div class="config-grid">
+                <div class="config-item" style="grid-column: span 2;">
+                    <label>Project / Course</label>
+                    <div class="project-toggle">
+                        <button type="button" class="toggle-btn active" id="btn-existing" onclick="setMode('existing')">Select Existing</button>
+                        <button type="button" class="toggle-btn" id="btn-new" onclick="setMode('new')">Create New</button>
+                    </div>
+                    <select id="select-project" name="existing_project_name" class="modern-select">
+                        <option value="" disabled selected>-- Select a Project --</option>
+                        {% for p in existing_projects %}
+                        <option value="{{ p }}">{{ p }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" id="input-project" name="new_project_name" class="hidden" placeholder="e.g. Biology 101">
+                </div>
+                <div class="config-item">
+                    <label>Target Grade Level</label>
+                    <input type="number" name="grade" value="{{ defaults.default_grade }}" min="5" max="18">
+                </div>
+                <div class="config-item">
+                    <label>Activity Buffer (min)</label>
+                    <input type="number" name="buffer" value="{{ defaults.default_buffer }}" step="0.5">
+                </div>
+            </div>
+            <button type="submit" class="btn-audit" id="audit-btn">🚀 Start Analysis</button>
+        </form>
+        <div id="progress-container">
+            <p id="status-text">Analyzing Slide Structure...</p>
+            <div class="progress-bar"><div class="progress-fill" id="fill"></div></div>
+        </div>
+        <div id="result-actions" style="display:none; margin-top: 20px;">
+            <button class="btn-audit" style="background:var(--intelligent-teal); margin-bottom:10px;" onclick="window.open('/view-report')">📊 View Executive Summary</button>
+            <button class="btn-audit" onclick="window.open('/view-workstation')">🖥️ Open ID Workstation</button>
+        </div>
+    </div>
+<script>
+    function setMode(mode) {
+        const sel = document.getElementById('select-project');
+        const inp = document.getElementById('input-project');
+        const btnEx = document.getElementById('btn-existing');
+        const btnNew = document.getElementById('btn-new');
+        if(mode === 'existing') {
+            sel.classList.remove('hidden'); inp.classList.add('hidden');
+            btnEx.classList.add('active'); btnNew.classList.remove('active');
+            inp.removeAttribute('required'); sel.setAttribute('required', 'true');
+        } else {
+            sel.classList.add('hidden'); inp.classList.remove('hidden');
+            btnEx.classList.remove('active'); btnNew.classList.add('active');
+            sel.removeAttribute('required'); inp.setAttribute('required', 'true'); inp.focus();
+        }
+    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const preSelectedProject = urlParams.get('project');
+    if (preSelectedProject) {
+        const sel = document.getElementById('select-project');
+        let found = false;
+        for(let i=0; i<sel.options.length; i++) { if(sel.options[i].value === preSelectedProject) { sel.selectedIndex = i; found = true; break; } }
+        if (!found) { setMode('new'); document.getElementById('input-project').value = preSelectedProject; } else { setMode('existing'); }
+    } else {
+        const hasOptions = document.getElementById('select-project').options.length > 1; 
+        if(!hasOptions) setMode('new');
+    }
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const form = document.getElementById('upload-form');
+    let droppedFile = null;
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => { dropZone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }); });
+    dropZone.ondragover = () => dropZone.classList.add('dragover');
+    dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+    dropZone.ondrop = (e) => { dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]); };
+    dropZone.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => { if(e.target.files.length > 0) handleFile(e.target.files[0]); };
+    function handleFile(file) {
+        if (!file.name.toLowerCase().endsWith('.pptx')) { alert("⚠️ Invalid File Type.\nPlease only upload PowerPoint (.pptx) files."); return; }
+        droppedFile = file; document.getElementById('file-label').innerHTML = `<strong>Selected:</strong><br>${file.name}`;
+    }
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        if (droppedFile) formData.set('file', droppedFile);
+        else if (fileInput.files.length > 0) formData.set('file', fileInput.files[0]);
+        else { alert("Please select a file."); return; }
+        const mode = document.getElementById('input-project').classList.contains('hidden') ? 'existing' : 'new';
+        const finalName = mode === 'existing' ? document.getElementById('select-project').value : document.getElementById('input-project').value;
+        formData.set('project_name', finalName);
+        formData.set('grade', form.grade.value);
+        formData.set('buffer', form.buffer.value);
+        document.getElementById('audit-btn').style.display = 'none';
+        document.getElementById('progress-container').style.display = 'block';
+        const bar = document.getElementById('fill');
+        let p = 0;
+        const interval = setInterval(() => { if(p<90) { p+=5; bar.style.width = p+'%'; } }, 500);
+        try {
+            const response = await fetch('/upload', { method: 'POST', body: formData });
+            const result = await response.json();
+            clearInterval(interval);
+            if (result.status === "success") {
+                bar.style.width = '100%';
+                document.getElementById('status-text').innerText = "Audit Complete!";
+                document.getElementById('result-actions').style.display = 'block';
+                document.querySelector("button[onclick*='/view-report']").onclick = () => window.open(`/view-report/${result.session_id}`);
+                document.querySelector("button[onclick*='/view-workstation']").onclick = () => window.open(`/view-workstation/${result.session_id}`);
+            } else { alert("Error: " + result.error); location.reload(); }
+        } catch (err) { alert("Connection Failed."); location.reload(); }
+    };
+</script>
+</body>
+</html>

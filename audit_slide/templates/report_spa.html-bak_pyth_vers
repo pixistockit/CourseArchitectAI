@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditSlide Workstation - {{ summary.presentation_name }}</title>
+    <style>
+        :root { --primary-navy: #0A2342; --intelligent-teal: #005F73; --action-amber: #E9B44C; --compliance-green: #2A9D8F; --neutral-bg: #F4F6F8; --white: #FFFFFF; --sidebar-width: 320px; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--neutral-bg); margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
+        
+        /* SIDEBAR */
+        .sidebar { width: var(--sidebar-width); background-color: var(--primary-navy); color: var(--white); display: flex; flex-direction: column; border-right: 1px solid #1a3a5e; flex-shrink: 0; }
+        .sidebar-header { padding: 20px; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.1); } .sidebar-header h2 { margin: 0; font-size: 1.2rem; letter-spacing: 0.5px; } .sidebar-header .meta { font-size: 0.75rem; opacity: 0.7; margin-top: 5px; }
+        .progress-container { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); } .progress-label { font-size: 0.8rem; display: flex; justify-content: space-between; margin-bottom: 8px; opacity: 0.9; } .progress-bar-bg { background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden; } .progress-bar-fill { height: 100%; background-color: var(--compliance-green); width: 0%; transition: width 0.5s ease; }
+        .slide-list { flex: 1; overflow-y: auto; padding: 10px 0; }
+        .slide-item { padding: 12px 20px; cursor: pointer; border-left: 4px solid transparent; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; } .slide-item:hover { background-color: rgba(255,255,255,0.05); } .slide-item.active { background-color: var(--white); color: var(--primary-navy); border-left-color: var(--intelligent-teal); }
+        .slide-indicator { width: 8px; height: 8px; border-radius: 50%; display: inline-block; } .ind-fail { background-color: var(--action-amber); } .ind-pass { background-color: var(--compliance-green); } .ind-exempt { background-color: #888; opacity: 0.5; } .slide-item.active .ind-fail { box-shadow: 0 0 0 2px rgba(233, 180, 76, 0.4); }
+        
+        /* MAIN STAGE */
+        .main-stage { flex: 1; display: flex; flex-direction: column; background-color: var(--neutral-bg); position: relative; }
+        .stage-header { padding: 15px 40px; background: var(--white); border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.03); } 
+        .nav-controls button { background: var(--white); border: 1px solid #ccc; padding: 8px 16px; border-radius: 6px; cursor: pointer; color: var(--primary-navy); font-weight: 600; transition: all 0.2s; } .nav-controls button:hover { background: var(--neutral-bg); border-color: var(--primary-navy); }
+        
+        /* FILTER BAR */
+        .filter-bar { display: flex; gap: 10px; margin-top: 5px; }
+        .filter-chip { padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: #fff; color: #666; transition: all 0.2s; }
+        .filter-chip:hover { background: #f0f0f0; }
+        .filter-chip.active { background: var(--intelligent-teal); color: #fff; border-color: var(--intelligent-teal); }
+        
+        .content-scroll { flex: 1; overflow-y: auto; padding: 40px; }
+        
+        /* CARD & TABLE */
+        .slide-detail-card { background: var(--white); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 900px; margin: 0 auto; border: 1px solid #eee; display: none; animation: fadeIn 0.3s ease; } .slide-detail-card.visible { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .card-header { padding: 25px; border-bottom: 2px solid var(--neutral-bg); background: linear-gradient(to right, #fff, #fbfbfb); border-radius: 12px 12px 0 0; } .card-title { font-size: 1.5rem; font-weight: 700; color: var(--primary-navy); }
+        .exempt-overlay { padding: 60px; text-align: center; color: #888; background: repeating-linear-gradient(45deg, #fff, #fff 10px, #f9f9f9 10px, #f9f9f9 20px); border-radius: 0 0 12px 12px; }
+        table { width: 100%; border-collapse: collapse; } th { text-align: left; padding: 18px 25px; background: #fafafa; color: #666; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; } td { padding: 20px 25px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+        
+        tr.issue-row { transition: background 0.2s; } 
+        tr.issue-row:hover { background: #fcfcfc; } 
+        tr.resolved { opacity: 0.5; background: #f9f9f9; text-decoration: line-through; } 
+        tr.resolved .badge { background: #ccc !important; color: #fff !important; }
+        tr.hidden-row { display: none; } /* FILTER HIDDEN */
+
+        .check-container { display: block; position: relative; padding-left: 35px; cursor: pointer; user-select: none; } .check-container input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; } .checkmark { position: absolute; top: 0; left: 0; height: 22px; width: 22px; background-color: #eee; border-radius: 4px; transition: all 0.2s; } .check-container:hover input ~ .checkmark { background-color: #ccc; } .check-container input:checked ~ .checkmark { background-color: var(--compliance-green); } .checkmark:after { content: ""; position: absolute; display: none; } .check-container input:checked ~ .checkmark:after { display: block; } .check-container .checkmark:after { left: 8px; top: 4px; width: 4px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; } .badge-fail { background: rgba(233, 180, 76, 0.15); color: #B07D18; }
+        .swatch-container { display: flex; align-items: center; gap: 8px; margin-top: 5px;} .swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header"><h2>AuditSlide AI</h2><div class="meta">Workstation Mode</div></div>
+        <div class="progress-container"><div class="progress-label"><span>Progress</span><span id="progress-text">0%</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="master-progress" style="width: 0%;"></div></div></div>
+        <div class="slide-list" id="slide-nav">
+            {% for slide_num, issues in grouped_issues.items() %}
+            {% set is_exempt = issues|selectattr("result", "equalto", "EXEMPT")|list|length > 0 %}
+            <div class="slide-item" onclick="showSlide({{ slide_num }})" id="nav-item-{{ slide_num }}">
+                <div style="font-size: 0.9rem; font-weight: 500;">Slide {{ slide_num }}</div>
+                <div class="slide-indicator {{ 'ind-exempt' if is_exempt else 'ind-fail' }}" id="ind-{{ slide_num }}"></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="main-stage">
+        <div class="stage-header">
+            <div>
+                <h3 style="margin:0 0 10px 0; color:var(--primary-navy);" id="current-slide-title">Select a Slide</h3>
+                <div class="filter-bar">
+                    <div class="filter-chip active" onclick="applyFilter('all', this)">All Issues</div>
+                    <div class="filter-chip" onclick="applyFilter('wcag', this)">Compliance</div>
+                    <div class="filter-chip" onclick="applyFilter('font', this)">Formatting</div>
+                    <div class="filter-chip" onclick="applyFilter('content', this)">Content & Style</div>
+                </div>
+            </div>
+            <div class="nav-controls"><button onclick="prevSlide()">← Prev</button><button onclick="nextSlide()">Next →</button></div>
+        </div>
+        
+        <div class="content-scroll">
+            {% for slide_num, issues in grouped_issues.items() %}
+            {% set is_exempt = issues|selectattr("result", "equalto", "EXEMPT")|list|length > 0 %}
+            <div class="slide-detail-card" id="card-{{ slide_num }}">
+                <div class="card-header"><div class="card-title">Slide {{ slide_num }} Findings</div><div style="font-size:0.9rem; color:#666; margin-top:5px;">{{ 'Analysis Exempt' if is_exempt else issues|length ~ ' Issues Found' }}</div></div>
+                {% if is_exempt %}
+                <div class="exempt-overlay"><h3>EXEMPT FROM ANALYSIS</h3><p>This slide was excluded by configuration rules.</p></div>
+                {% else %}
+                <table><thead><tr><th width="5%">Done</th><th width="15%">Type</th><th width="40%">Details</th><th width="35%">Fix</th></tr></thead><tbody>
+                        {% for issue in issues %}
+                        {% set cat = 'other' %}
+                        {% if 'WCAG' in issue.check or 'Alt Text' in issue.check or 'Reading Order' in issue.check %}{% set cat = 'wcag' %}
+                        {% elif 'Font' in issue.check or 'Brand' in issue.check %}{% set cat = 'font' %}
+                        {% elif 'Clarity' in issue.check or 'Spelling' in issue.check or 'Tone' in issue.check or 'Jargon' in issue.check %}{% set cat = 'content' %}
+                        {% endif %}
+                        
+                        <tr class="issue-row" id="row-{{ slide_num }}-{{ loop.index }}" data-category="{{ cat }}">
+                            <td><label class="check-container"><input type="checkbox" onchange="toggleIssue({{ slide_num }}, {{ loop.index }})"><span class="checkmark"></span></label></td>
+                            <td><span class="badge badge-fail">{{ issue.check }}</span><div style="font-size:0.75rem; margin-top:4px; color:#888;">{{ issue.shape_name }}</div></td>
+                            <td>{{ issue.details }}</td>
+                            <td>
+                                {% if issue.suggested_fix_color %}<div class="swatch-container"><div class="swatch" style="background: rgb{{ issue.original_text_rgb }};" title="Current"></div><span>➜</span><div class="swatch" style="background: rgb{{ issue.suggested_fix_color_tuple }};" title="Suggested"></div></div>
+                                {% elif "Font" in issue.check %}{% if "size" in issue.details %}Increase size.{% elif "Bold" in issue.details %}Make Bold.{% else %}Change to Rockwell.{% endif %}
+                                {% elif "Spelling" in issue.check %}Check typos.
+                                {% elif "Clarity" in issue.check or "Tone" in issue.check %}Simplify / Active Voice.
+                                {% else %}Manual Fix{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                </tbody></table>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <script>
+        const totalIssues = {{ summary.total_errors }};
+        let currentSlide = 1;
+        const totalSlides = {{ summary.total_slides_checked }};
+        let currentFilter = 'all';
+
+        document.addEventListener("DOMContentLoaded", () => { loadProgress(); showSlide(1); });
+
+        function showSlide(num) {
+            document.querySelectorAll('.slide-detail-card').forEach(el => el.classList.remove('visible'));
+            document.querySelectorAll('.slide-item').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(`card-${num}`);
+            const nav = document.getElementById(`nav-item-${num}`);
+            if(target) { 
+                target.classList.add('visible'); 
+                document.getElementById('current-slide-title').innerText = `Slide ${num} Review`; 
+                currentSlide = num; 
+                // Re-apply current filter to the newly shown slide
+                applyFilterVisuals(currentFilter);
+            }
+            if(nav) nav.classList.add('active');
+        }
+
+        function nextSlide() { if(currentSlide < totalSlides) showSlide(currentSlide + 1); }
+        function prevSlide() { if(currentSlide > 1) showSlide(currentSlide - 1); }
+
+        function toggleIssue(slideNum, issueIdx) {
+            const rowId = `row-${slideNum}-${issueIdx}`; const row = document.getElementById(rowId); const isChecked = row.querySelector('input').checked;
+            if (isChecked) { row.classList.add('resolved'); localStorage.setItem(rowId, 'resolved'); } else { row.classList.remove('resolved'); localStorage.removeItem(rowId); }
+            updateProgress();
+        }
+
+        function loadProgress() { document.querySelectorAll('.issue-row').forEach(row => { if (localStorage.getItem(row.id) === 'resolved') { row.classList.add('resolved'); row.querySelector('input').checked = true; } }); updateProgress(); }
+        
+        function updateProgress() {
+            const resolvedCount = document.querySelectorAll('.issue-row.resolved').length;
+            const pct = totalIssues > 0 ? Math.round((resolvedCount / totalIssues) * 100) : 100;
+            document.getElementById('master-progress').style.width = pct + '%';
+            document.getElementById('progress-text').innerText = pct + '% Resolved';
+            {% for slide_num, issues in grouped_issues.items() %} checkSlideCompletion({{ slide_num }}); {% endfor %}
+        }
+
+        function checkSlideCompletion(slideNum) {
+            const card = document.getElementById(`card-${slideNum}`); if (!card) return;
+            const totalInSlide = card.querySelectorAll('.issue-row').length;
+            const resolvedInSlide = card.querySelectorAll('.issue-row.resolved').length;
+            const indicator = document.getElementById(`ind-${slideNum}`);
+            if (indicator && !indicator.classList.contains('ind-exempt')) {
+                if (resolvedInSlide === totalInSlide && totalInSlide > 0) { indicator.classList.remove('ind-fail'); indicator.classList.add('ind-pass'); } else { indicator.classList.add('ind-fail'); indicator.classList.remove('ind-pass'); }
+            }
+        }
+
+        // --- FILTER LOGIC ---
+        function applyFilter(category, btnElement) {
+            currentFilter = category;
+            
+            // Update UI Buttons
+            if(btnElement) {
+                document.querySelectorAll('.filter-chip').forEach(el => el.classList.remove('active'));
+                btnElement.classList.add('active');
+            }
+            
+            applyFilterVisuals(category);
+        }
+
+        function applyFilterVisuals(category) {
+            const activeCard = document.querySelector('.slide-detail-card.visible');
+            if(!activeCard) return;
+
+            const rows = activeCard.querySelectorAll('.issue-row');
+            rows.forEach(row => {
+                if (category === 'all' || row.getAttribute('data-category') === category) {
+                    row.classList.remove('hidden-row');
+                } else {
+                    row.classList.add('hidden-row');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
