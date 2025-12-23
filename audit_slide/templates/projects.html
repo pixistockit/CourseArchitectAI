@@ -3,33 +3,93 @@
 {% block title %}Projects{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">Audit Projects</h1>
-    <p class="page-subtitle">Manage, review, and initiate all forensic compliance audits.</p>
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">Audit Projects</h1>
+        <p class="page-subtitle">Manage, review, and initiate all forensic compliance audits.</p>
+    </div>
+    <a href="{{ url_for('new_audit') }}" class="btn btn-primary">
+        <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>New Audit</span>
+    </a>
 </div>
 
-<!-- The project listing logic from the old file goes here, but simplified. -->
-<!-- This will be styled and enhanced later. -->
-<div>
-    <h2>Project Groups</h2>
+<div class="project-groups-container">
     {% if projects %}
-        <ul>
         {% for group_name, files in projects.items() %}
-            <li>
-                <strong>{{ group_name }}</strong>
-                <ul>
-                    {% for file in files %}
-                    <li>
-                        {{ file.filename }} (Score: {{ file.score }}%) - 
-                        <a href="{{ url_for('view_workstation', report_id=file.id) }}">View Workstation</a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </li>
+        <div class="project-card">
+            <div class="project-card-header">
+                <div class="project-card-title">{{ group_name }}</div>
+                <div class="project-card-meta">{{ files|length }} Audits</div>
+            </div>
+            <div class="project-card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>Date</th>
+                            <th>Score</th>
+                            <th>Issues</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file in files %}
+                        <tr>
+                            <td>{{ file.filename }}</td>
+                            <td>{{ file.date }}</td>
+                            <td>
+                                <span class="score-badge {% if file.score >= 90 %}score-green{% elif file.score >= 70 %}score-amber{% else %}score-red{% endif %}">
+                                    {{ "%.1f"|format(file.score) }}%
+                                </span>
+                            </td>
+                            <td>{{ file.issues }}</td>
+                            <td>
+                                <a href="{{ url_for('view_workstation', report_id=file.id) }}" class="btn-action">View</a>
+                                <button class="btn-action btn-delete" data-report-id="{{ file.id }}">Delete</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
         {% endfor %}
-        </ul>
     {% else %}
-        <p>No audit projects found. Upload a presentation to begin.</p>
+        <div class="empty-state-card">
+            <h3>No Projects Found</h3>
+            <p>It looks like you haven't run any audits yet.</p>
+            <a href="{{ url_for('new_audit') }}" class="btn btn-primary" style="margin-top: 16px;">Start Your First Audit</a>
+        </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.btn-delete');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const reportId = this.dataset.reportId;
+            if (confirm(`Are you sure you want to permanently delete this report (${reportId})?`)) {
+                fetch(`/delete/${reportId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'deleted') {
+                        // For simplicity, we just reload the page.
+                        // A more advanced UI would remove the row directly.
+                        window.location.reload();
+                    } else {
+                        alert('Error: Could not delete the report.');
+                    }
+                });
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
