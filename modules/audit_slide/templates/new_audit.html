@@ -1,0 +1,194 @@
+{% extends 'layout.html' %}
+
+{% block title %}New Audit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Launch New Audit</h1>
+    <p class="page-subtitle">Select a presentation file and assign it to a project to begin the forensic analysis.</p>
+</div>
+
+<div class="launchpad-container">
+    <div class="launchpad-card">
+        <!-- DRAG & DROP UPLOADER -->
+        <div id="drop-zone" class="upload-zone">
+            <div class="upload-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </div>
+            <p class="upload-text-main">Drag & Drop your .pptx file here</p>
+            <p class="upload-text-sub">or click to select a file</p>
+            <input type="file" id="file-input" accept=".pptx" style="display: none;">
+        </div>
+        <div id="file-info" class="file-display" style="display: none;">
+            <div id="file-name"></div>
+            <button id="remove-file" class="btn-remove">&times;</button>
+        </div>
+
+        <!-- PROJECT SELECTION -->
+        <div class="project-selector">
+            <div class="toggle-group">
+                <button class="toggle-btn active" id="btn-new-project">Create New Project</button>
+                <button class="toggle-btn" id="btn-existing-project">Use Existing Project</button>
+            </div>
+            <div id="new-project-input-container">
+                <label for="new-project-name">New Project Name</label>
+                <input type="text" id="new-project-name" class="form-input" placeholder="e.g., Q3 Sales Onboarding">
+            </div>
+            <div id="existing-project-select-container" style="display: none;">
+                <label for="existing-project-name">Select an Existing Project</label>
+                <select id="existing-project-name" class="form-select">
+                    {% for project in existing_projects %}
+                        <option value="{{ project }}">{{ project }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- ACTION & PROGRESS -->
+        <div class="action-footer">
+            <button id="btn-start-audit" class="btn-launch-audit" disabled>Start Forensic Audit</button>
+            <div id="progress-container" style="display: none;">
+                <div class="progress-bar-bg">
+                    <div id="progress-fill" class="progress-bar-fill"></div>
+                </div>
+                <div id="progress-label" class="progress-label-text">Uploading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const fileInfo = document.getElementById('file-info');
+    const fileNameDisplay = document.getElementById('file-name');
+    const removeFileBtn = document.getElementById('remove-file');
+    const startAuditBtn = document.getElementById('btn-start-audit');
+    
+    let selectedFile = null;
+
+    function handleFileSelect(file) {
+        if (file && (file.name.endsWith('.pptx') || file.name.endsWith('.ppt'))) {
+            selectedFile = file;
+            fileNameDisplay.textContent = file.name;
+            dropZone.style.display = 'none';
+            fileInfo.style.display = 'flex';
+            startAuditBtn.disabled = false;
+        } else {
+            alert('Please select a valid .pptx or .ppt file.');
+        }
+    }
+
+    dropZone.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => handleFileSelect(e.target.files[0]);
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragging'), false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragging'), false);
+    });
+
+    dropZone.addEventListener('drop', (e) => handleFileSelect(e.dataTransfer.files[0]), false);
+
+    removeFileBtn.onclick = () => {
+        selectedFile = null;
+        fileInput.value = '';
+        dropZone.style.display = 'flex';
+        fileInfo.style.display = 'none';
+        startAuditBtn.disabled = true;
+    };
+
+    // Project Toggle Logic
+    const btnNew = document.getElementById('btn-new-project');
+    const btnExisting = document.getElementById('btn-existing-project');
+    const newProjectContainer = document.getElementById('new-project-input-container');
+    const existingProjectContainer = document.getElementById('existing-project-select-container');
+
+    btnNew.onclick = () => {
+        btnNew.classList.add('active');
+        btnExisting.classList.remove('active');
+        newProjectContainer.style.display = 'block';
+        existingProjectContainer.style.display = 'none';
+    };
+    btnExisting.onclick = () => {
+        btnExisting.classList.add('active');
+        btnNew.classList.remove('active');
+        existingProjectContainer.style.display = 'block';
+        newProjectContainer.style.display = 'none';
+    };
+
+    // Audit Upload Logic
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressLabel = document.getElementById('progress-label');
+
+    startAuditBtn.onclick = async () => {
+        if (!selectedFile) return;
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        let projectName = '';
+        if (btnNew.classList.contains('active')) {
+            projectName = document.getElementById('new-project-name').value.trim();
+        } else {
+            projectName = document.getElementById('existing-project-name').value;
+        }
+
+        if (!projectName) {
+            alert('Project name is required.');
+            return;
+        }
+        formData.append('project_name', projectName);
+
+        startAuditBtn.style.display = 'none';
+        progressContainer.style.display = 'block';
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', "{{ url_for('upload_file') }}", true);
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                progressFill.style.width = percentComplete + '%';
+                progressLabel.textContent = `Uploading... ${Math.round(percentComplete)}%`;
+            }
+        };
+
+        xhr.onload = function() {
+            progressFill.style.width = '100%';
+            if (xhr.status === 200) {
+                progressLabel.textContent = 'Upload complete. Starting analysis...';
+                const response = JSON.parse(xhr.responseText);
+                // Redirect to the projects page after a short delay
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('projects_page') }}";
+                }, 1500);
+            } else {
+                progressLabel.textContent = 'Upload failed. Please try again.';
+                startAuditBtn.style.display = 'block';
+                progressContainer.style.display = 'none';
+            }
+        };
+
+        xhr.onerror = function() {
+            progressLabel.textContent = 'An error occurred during the upload.';
+            startAuditBtn.style.display = 'block';
+            progressContainer.style.display = 'none';
+        };
+
+        xhr.send(formData);
+    };
+});
+</script>
+{% endblock %}
