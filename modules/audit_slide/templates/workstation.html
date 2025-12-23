@@ -13,7 +13,7 @@
     .nav-title { font-size: 1.1rem; font-weight: 800; color: var(--primary-navy); letter-spacing: -0.5px; margin: 0; }
     .nav-meta { font-size: 0.8rem; color: #64748b; margin-top: 4px; font-weight: 500; }
     
-    /* ACTION PANEL (Restored) */
+    /* ACTION PANEL */
     .action-panel { padding: 15px; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 10px; background: #fff; }
     
     .btn-sidebar { 
@@ -73,7 +73,7 @@
     .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
     .info-pill { background: #f0f9ff; color: var(--intelligent-teal); padding: 4px 12px; border-radius: 15px; font-size: 0.75rem; font-weight: 700; display: inline-block; margin-top: 10px; border: 1px solid #bae6fd; }
 
-    /* ISSUE TABLE & AI BOX Styles (Retained) */
+    /* ISSUE TABLE & AI BOX Styles */
     .btn-ai { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
     .btn-ai:hover { opacity: 0.9; transform: translateY(-1px); }
     .btn-ai:disabled { background: #cbd5e1; cursor: not-allowed; }
@@ -83,9 +83,12 @@
     .issue-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
     .issue-fail { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
     .issue-warn { background: #fefce8; color: #a16207; border: 1px solid #fef9c3; }
+    
+    /* FIX BUTTONS */
     .btn-fix { background: #fff; border: 1px solid var(--compliance-green); color: var(--compliance-green); padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-fix:hover { background: var(--compliance-green); color: white; }
     .btn-fix.staged { background: var(--compliance-green); color: white; cursor: default; opacity: 0.7; }
+    
     .remediation-box { background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid var(--intelligent-teal); padding: 20px; margin: 20px 30px; border-radius: 4px; }
     .critique-text { color: #475569; font-style: italic; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.6; }
     .fix-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -169,18 +172,14 @@
     const stagedFixes = {};
     const aiResultsCache = {};
     
-    // Safety check
     if (!auditData) console.error("No Audit Data found!");
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!auditData) return;
         
-        // 1. Initialize Slide List
         const totalSlides = auditData.summary.total_slides_checked;
         document.getElementById('total-slides').innerText = totalSlides;
         renderSidebar(auditData);
-        
-        // 2. Show First Slide
         showSlide(1);
     });
 
@@ -189,8 +188,6 @@
         const modal = document.getElementById('ai-warning-modal');
         const estText = document.getElementById('token-estimate');
         const count = auditData.summary.total_slides_checked;
-        
-        // Simple Estimate: 400 tokens per slide
         const totalTokens = count * 400;
         estText.innerHTML = `~ ${totalTokens.toLocaleString()} Tokens`;
         modal.style.display = 'flex';
@@ -236,7 +233,6 @@
                 if(res.status === 'success') {
                     res.data.forEach(result => {
                         aiResultsCache[result.slide_number] = result;
-                        // Real-time update if looking at this slide
                         renderRemediationOptions(result.slide_number, result);
                     });
                 }
@@ -249,7 +245,6 @@
         }
 
         btn.innerHTML = '<i class="fas fa-check"></i> Analysis Complete';
-        // Refresh current view
         const currentId = document.querySelector('.slide-item.active')?.id.split('-')[2] || 1;
         showSlide(parseInt(currentId));
     }
@@ -265,8 +260,6 @@
             
             const formData = new FormData(); 
             formData.set('file', input.files[0]);
-            
-            // Get ID from URL path (last segment)
             const reportId = window.location.pathname.split('/').pop(); 
             
             try {
@@ -347,10 +340,26 @@
                 let fixBtn = '<span style="color:#94a3b8; font-size:0.8rem;">Manual Review</span>';
                 const shapeArg = (issue.shape_name || '').replace(/'/g, "\\'");
                 
-                if (issue.check.includes('Font') && issue.details.includes('below minimum')) {
-                    fixBtn = `<button class="btn-fix" onclick="stageSafeFix(${slideNum}, 'fix_font_size', '${shapeArg}', this)"><i class="fas fa-magic"></i> Auto Fix Fonts</button>`;
-                } else if (issue.check.includes('WCAG') && issue.details.includes('Contrast')) {
-                     fixBtn = `<button class="btn-fix" onclick="stageSafeFix(${slideNum}, 'fix_contrast', '${shapeArg}', this)"><i class="fas fa-palette"></i> Smart Contrast</button>`;
+                // --- RESTORED AUTO-FIX LOGIC ---
+                const detailsLower = (issue.details || '').toLowerCase();
+                const checkLower = (issue.check || '').toLowerCase();
+
+                if (checkLower.includes('font') && detailsLower.includes('below minimum')) {
+                     fixBtn = `<button class="btn-fix" onclick="stageSafeFix(${slideNum}, 'fix_font_size', '${shapeArg}', this)"><i class="fas fa-magic"></i> Auto Fix Fonts</button>`;
+                } 
+                else if (checkLower.includes('font') && (detailsLower.includes('family') || detailsLower.includes('allowed') || detailsLower.includes('unauthorized'))) {
+                     fixBtn = `<button class="btn-fix" onclick="stageSafeFix(${slideNum}, 'fix_font_family', '${shapeArg}', this)"><i class="fas fa-font"></i> Standardize Font</button>`;
+                }
+                else if (checkLower.includes('title') && detailsLower.includes('placeholder')) {
+                     fixBtn = `<button class="btn-fix" onclick="stageSafeFix(${slideNum}, 'fix_slide_title', '${shapeArg}', this)"><i class="fas fa-magic"></i> Auto Insert Title</button>`;
+                }
+                else if (checkLower.includes('wcag') && (detailsLower.includes('contrast') || detailsLower.includes('failure') || detailsLower.includes('ratio'))) { 
+                    if (!detailsLower.includes('table bg') && !detailsLower.includes('image/texture')) {
+                        fixBtn = `<button class="btn-fix" onclick="stageSafeFix(${slideNum}, 'fix_contrast', '${shapeArg}', this)"><i class="fas fa-palette"></i> Smart Contrast</button>`;
+                    }
+                }
+                else if (checkLower.includes('notes') && (detailsLower.includes('font') || detailsLower.includes('size'))) {
+                     fixBtn = `<button class="btn-fix" onclick="stageSafeFix(${slideNum}, 'fix_font_family', 'Speaker Notes', this)"><i class="fas fa-font"></i> Standardize Notes</button>`;
                 }
 
                 html += `
