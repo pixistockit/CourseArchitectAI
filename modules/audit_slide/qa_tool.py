@@ -1,78 +1,82 @@
-# /modules/audit_slide/qa_tool.py - DEFINITIVE RESTORATION
+# /modules/audit_slide/qa_tool.py - STRICT USER LOGGING ISOLATION
 
 import os
+import sys
 import json
 import logging
 import shutil
 from datetime import datetime
 from pptx import Presentation
 
-# --- CORRECTED RELATIVE IMPORTS ---
+# --- PATH SETUP FOR SERVICES ---
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
 try:
     from .analyzer import PptxAnalyzer
     from .ai_engine import AIEngine
     from .report_generator import generate_html_report, generate_spa_report, generate_ai_context_report
+    
+    # Import Central Logger
+    from services.logger_service import LoggerService
+    central_logger = LoggerService()
 except ImportError as e:
     print(f"CRITICAL ERROR: Missing modules in qa_tool.py. {e}")
-    raise e
+    central_logger = None
 
-# --- SETUP LOGGING (Restoring Original File Logger) ---
+# --- LOCAL DEBUG FALLBACK ---
+# This remains as a temporary scratchpad for the Python process itself, 
+# but is NOT the official record.
 LOG_DIR = 'data/logs'
 os.makedirs(LOG_DIR, exist_ok=True)
 log_file = os.path.join(LOG_DIR, 'audit_debug.log')
 
 logger = logging.getLogger('audit_tool')
 logger.setLevel(logging.DEBUG)
-# Ensure we don't duplicate handlers if re-imported
 if not logger.handlers:
     fh = logging.FileHandler(log_file, mode='a')
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(fh)
 
-def _enforce_single_session(active_dir):
-    """
-    Sustainability Fix: Delete all report folders EXCEPT the current active one.
-    """
-    try:
-        reports_root = os.path.dirname(active_dir)
-        if os.path.basename(reports_root) != 'reports':
-            return
-        for item in os.listdir(reports_root):
-            item_path = os.path.join(reports_root, item)
-            if os.path.isdir(item_path) and item_path != active_dir:
-                logger.info(f"🧹 Auto-Cleaning Old Session: {item}")
-                shutil.rmtree(item_path)
-    except Exception as e:
-        logger.warning(f"⚠️ Auto-Cleanup Warning: {e}")
+def _user_log(report_id, message, agent="ORCHESTRATOR"):
+    """Helper to ensure we ONLY write to the specific User/Session log."""
+    if central_logger and report_id:
+        central_logger.log_audit(report_id, "INFO", message, agent=agent)
 
 def run_audit_slide(pptx_path, output_dir):
-    logger.info(f"🚀 STARTING AUDIT: {os.path.basename(pptx_path)}")
-    os.makedirs(output_dir, exist_ok=True)
+    filename = os.path.basename(pptx_path)
     
-    # --- Single Session Mode (Disabled by default for SaaS safety) ---
-    # _enforce_single_session(output_dir)
+    # 1. Extract Report ID from the path (e.g., data/reports/{UUID})
+    # This ensures logs go to the specific user session folder.
+    report_id = os.path.basename(output_dir)
+    
+    logger.info(f"🚀 STARTING AUDIT: {filename}")
+    
+    # --- LOGGING: USER STREAM START ---
+    _user_log(report_id, f"Session Initiated for file: {filename}", agent="SESSION_MGR")
 
-    # 1. CHECK MASTER SLIDE COUNT
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 2. CHECK MASTER SLIDE COUNT
     master_count = 1
     try:
         temp_prs = Presentation(pptx_path)
         master_count = len(temp_prs.slide_masters)
-        logger.info(f"Detected {master_count} Master Slides.")
+        _user_log(report_id, f"Metadata Check: {master_count} Master Slides detected.", agent="PARSER")
     except Exception as e:
         logger.warning(f"Could not count masters: {e}")
 
-    # 2. RUN ANALYSIS
+    # 3. RUN FORENSIC ANALYSIS
     logger.info("Initializing PptxAnalyzer...")
-    analyzer = PptxAnalyzer(pptx_path)
+    _user_log(report_id, "Initializing Forensic Analyzer Engine...", agent="ANALYZER")
     
-    # Execute the scan
+    analyzer = PptxAnalyzer(pptx_path)
     issues = analyzer.run_analysis()
     
-    logger.info(f"Analysis Complete. Found {len(issues)} raw issues.")
-
-    # 3. PREPARE DATA (Restoring Original Logic)
     total = analyzer.total_slides_checked
-    # Use .get() for safety in case analyzer didn't populate gagne_metrics
+    error_count = len(issues)
+    _user_log(report_id, f"Forensic Scan Complete. Scanned {total} slides. Found {error_count} issues.", agent="ANALYZER")
+
+    # 4. PREPARE DATA
     gagne = getattr(analyzer, 'gagne_metrics', {"Present Content": 0, "Elicit Performance": 0, "Other": 0})
     
     pct_present = (gagne.get("Present Content", 0) / total * 100) if total > 0 else 0
@@ -81,33 +85,34 @@ def run_audit_slide(pptx_path, output_dir):
     wcag_fail_slides = set(i['slide'] for i in issues if "WCAG" in i.get('check', '') and i['result'] == 'FAIL')
     wcag_rate = ((total - len(wcag_fail_slides)) / total * 100) if total > 0 else 100
 
-    # 3a. Group Issues
     grouped_issues = {}
     for issue in issues:
         s_num = issue['slide']
         if s_num not in grouped_issues: grouped_issues[s_num] = []
         grouped_issues[s_num].append(issue)
 
-    # 3b. Extract Slide Content
     slide_data_map = {}
     if hasattr(analyzer, 'slide_content_map'):
         for item in analyzer.slide_content_map:
             slide_data_map[item['slide_number']] = item
-    else:
-        logger.warning("Analyzer missing slide_content_map.")
 
-    # 4. RUN AI ANALYSIS (Batch)
+    # 5. RUN AI ANALYSIS (Batch)
     logger.info("Sending slide batch to AI Engine...")
+    _user_log(report_id, "Packaging slide text for AI Context Engine...", agent="AI_BRIDGE")
+    
     ai_engine = AIEngine()
     ai_results = ai_engine.analyze_batch(
         slides_list=analyzer.slide_content_map,
         total_slide_count=total
     )
+    _user_log(report_id, f"AI Analysis Complete. Processed insights for {len(ai_results)} slides.", agent="AI_ENGINE")
 
-    # 5. CONSTRUCT FULL DATA (Matching Original Structure)
+    # 6. CONSTRUCT FINAL DATA
+    final_score = round(wcag_rate, 1)
+    
     full_data = {
         "summary": {
-            "presentation_name": os.path.basename(pptx_path),
+            "presentation_name": filename,
             "date_generated": datetime.now().isoformat(),
             "master_slide_count": master_count,
             "total_slides_checked": total,
@@ -118,7 +123,7 @@ def run_audit_slide(pptx_path, output_dir):
                 "slides_present_content": f"{gagne.get('Present Content', 0)} ({round(pct_present, 1)}%)",
                 "slides_elicit_performance": f"{gagne.get('Elicit Performance', 0)} ({round(pct_elicit, 1)}%)",
                 "other_slides": gagne.get('Other', 0),
-                "wcag_compliance_rate": round(wcag_rate, 1)
+                "wcag_compliance_rate": final_score
             },
             "content_metrics": {
                 "reading_complexity_fails": len([i for i in issues if "Reading Level" in i.get('check', '')]),
@@ -129,20 +134,16 @@ def run_audit_slide(pptx_path, output_dir):
         },
         "detailed_issues": issues,
         "grouped_issues": grouped_issues,
-        "slide_content": slide_data_map, # Used by HTML report
-        "ai_analysis": ai_results        # Used by Workstation
+        "slide_content": slide_data_map, 
+        "ai_analysis": ai_results        
     }
 
-    # 6. SAVE ARTIFACTS
-    
-    # A. JSON
+    # 7. SAVE ARTIFACTS
     json_path = os.path.join(output_dir, 'audit_report.json')
     with open(json_path, "w", encoding='utf-8') as f:
         json.dump(full_data, f, indent=4)
-    logger.info(f"Saved JSON: {json_path}")
-
-    # B. HTML Reports (Using Modular Generator)
-    logger.info("Generating static reports...")
+    
+    _user_log(report_id, "Generating HTML Reports...", agent="REPORT_GEN")
     
     generate_html_report(
         data=full_data, 
@@ -154,11 +155,12 @@ def run_audit_slide(pptx_path, output_dir):
         output_path=os.path.join(output_dir, 'ID Workstation.html')
     )
     
-    # C. Transcript
     generate_ai_context_report(analyzer, output_dir)
 
     print(f"✅ Audit Complete. All assets generated in: {output_dir}")
-    print(f"📄 Logs: {log_file}")
+    
+    # --- LOGGING: USER STREAM SUCCESS ---
+    _user_log(report_id, "Workflow Completed Successfully. All assets generated.", agent="ORCHESTRATOR")
     
     return json_path
 
