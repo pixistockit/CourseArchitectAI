@@ -4,15 +4,41 @@
 
 {% block content %}
 <style>
-    /* --- WORKSTATION SPECIFIC STYLES (Merged from report_spa.html) --- */
-    .workstation-container { display: flex; height: calc(100vh - 80px); gap: 0; } /* Remove gap for seamless sidebar */
+    /* --- WORKSTATION SPECIFIC STYLES --- */
+    .workstation-container { display: flex; height: calc(100vh - 80px); gap: 0; }
     
     /* LEFT PANEL: SLIDE NAVIGATOR */
-    .slide-nav-panel { width: 300px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
+    .slide-nav-panel { width: 340px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
     .nav-header { padding: 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
-    .nav-title { font-size: 0.9rem; font-weight: 700; color: var(--primary-navy); text-transform: uppercase; letter-spacing: 0.5px; }
+    .nav-title { font-size: 1.1rem; font-weight: 800; color: var(--primary-navy); letter-spacing: -0.5px; margin: 0; }
+    .nav-meta { font-size: 0.8rem; color: #64748b; margin-top: 4px; font-weight: 500; }
+    
+    /* ACTION PANEL (Restored) */
+    .action-panel { padding: 15px; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 10px; background: #fff; }
+    
+    .btn-sidebar { 
+        background: white; border: 1px solid #cbd5e1; color: var(--slate-700); 
+        padding: 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; 
+        display: flex; align-items: center; justify-content: center; gap: 8px; 
+        font-weight: 600; font-size: 0.85rem; font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-sidebar:hover { border-color: var(--intelligent-teal); color: var(--intelligent-teal); background: #f8fafc; }
+    
+    #btn-batch-ai {
+        background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; border: none;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+    #btn-batch-ai:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4); color: white; }
+
+    /* PROGRESS BAR */
+    .progress-container { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; display: none; }
+    .progress-label { font-size: 0.75rem; font-weight: 700; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .progress-track { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--intelligent-teal); width: 0%; transition: width 0.3s; }
+
+    /* SLIDE LIST */
     .slide-list { flex: 1; overflow-y: auto; }
-    .slide-item { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
+    .slide-item { padding: 14px 20px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
     .slide-item:hover { background: #f8fafc; }
     .slide-item.active { background: #e0f2fe; border-left: 4px solid var(--intelligent-teal); }
     .slide-label { font-weight: 600; color: var(--slate-700); font-size: 0.9rem; }
@@ -24,39 +50,42 @@
     .badge-exempt { background: #f1f5f9; color: #64748b; }
 
     /* CENTER PANEL: MAIN STAGE */
-    .main-stage { flex: 1; display: flex; flex-direction: column; background: #f8fafc; overflow: hidden; }
+    .main-stage { flex: 1; display: flex; flex-direction: column; background: #f8fafc; overflow: hidden; position: relative; }
     .stage-header { padding: 20px 30px; background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     .stage-title { font-size: 1.25rem; font-weight: 800; color: var(--primary-navy); }
     
-    /* FILTER BAR */
-    .filter-bar { display: flex; gap: 10px; }
+    .filter-bar { display: flex; gap: 10px; margin-top: 10px; }
     .filter-chip { padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #64748b; transition: all 0.2s; }
     .filter-chip.active { background: var(--intelligent-teal); color: #fff; border-color: var(--intelligent-teal); }
 
-    /* CONTENT AREA */
     .content-scroll { flex: 1; overflow-y: auto; padding: 30px; }
     
     /* ISSUE CARDS */
     .slide-card { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 30px; overflow: hidden; }
     .slide-card-header { padding: 20px 30px; background: #fff; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+    
+    /* MODAL STYLES */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+    .modal-box { background: white; width: 500px; padding: 30px; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: slideUp 0.3s ease; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-header { font-size: 1.25rem; font-weight: 800; color: var(--primary-navy); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+    .modal-body { color: var(--slate-500); line-height: 1.6; font-size: 0.95rem; margin-bottom: 25px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
+    .info-pill { background: #f0f9ff; color: var(--intelligent-teal); padding: 4px 12px; border-radius: 15px; font-size: 0.75rem; font-weight: 700; display: inline-block; margin-top: 10px; border: 1px solid #bae6fd; }
+
+    /* ISSUE TABLE & AI BOX Styles (Retained) */
     .btn-ai { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
     .btn-ai:hover { opacity: 0.9; transform: translateY(-1px); }
     .btn-ai:disabled { background: #cbd5e1; cursor: not-allowed; }
-
-    /* ISSUE TABLE */
     table { width: 100%; border-collapse: collapse; }
     th { text-align: left; padding: 15px 30px; background: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
     td { padding: 20px 30px; border-bottom: 1px solid #f1f5f9; vertical-align: top; color: #334155; font-size: 0.95rem; }
     .issue-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
     .issue-fail { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
     .issue-warn { background: #fefce8; color: #a16207; border: 1px solid #fef9c3; }
-    
-    /* FIX BUTTONS */
     .btn-fix { background: #fff; border: 1px solid var(--compliance-green); color: var(--compliance-green); padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-fix:hover { background: var(--compliance-green); color: white; }
     .btn-fix.staged { background: var(--compliance-green); color: white; cursor: default; opacity: 0.7; }
-
-    /* AI REMEDIATION BOX */
     .remediation-box { background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid var(--intelligent-teal); padding: 20px; margin: 20px 30px; border-radius: 4px; }
     .critique-text { color: #475569; font-style: italic; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.6; }
     .fix-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -64,11 +93,54 @@
     .fix-title { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 10px; }
 </style>
 
+<div id="ai-warning-modal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header"><i class="fas fa-brain" style="color:#6366f1;"></i> Start Global Analysis?</div>
+        <div class="modal-body">
+            This will send your slide content to the configured AI Provider for forensic analysis.
+            <br>
+            <span class="info-pill"><i class="fas fa-layer-group"></i> Processing Batch Size: 30 Slides</span>
+            <br><br>
+            <strong>Cost Estimate:</strong> <span id="token-estimate">Calculating...</span>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-sidebar" onclick="closeBatchModal()">Cancel</button>
+            <button class="btn-sidebar" style="background:var(--intelligent-teal); color:white; border:none;" onclick="startBatchAnalysis()">Confirm & Start</button>
+        </div>
+    </div>
+</div>
+
 <div class="workstation-container">
     <div class="slide-nav-panel">
         <div class="nav-header">
-            <div class="nav-title">Slides (<span id="total-slides">0</span>)</div>
+            <h2 class="nav-title">AuditSlide AI</h2>
+            <div class="nav-meta">Workstation Mode</div>
         </div>
+
+        <div class="action-panel">
+            <button class="btn-sidebar" id="btn-batch-ai" onclick="openBatchModal()">
+                <i class="fas fa-robot"></i> Analyze All Slides
+            </button>
+            
+            <input type="file" id="reupload-input" accept=".pptx" style="display:none" onchange="performReanalysis(this)">
+            <button class="btn-sidebar" onclick="triggerReanalysis()" id="btn-analyze-all">
+                <i class="fas fa-sync-alt"></i> Re-Upload Deck
+            </button>
+            
+            <button class="btn-sidebar" onclick="downloadDeck()" id="btn-download" disabled style="opacity:0.5;">
+                <i class="fas fa-download"></i> Apply & Download
+            </button>
+        </div>
+        
+        <div class="progress-container" id="progress-container">
+            <div class="progress-label"><span>AI Progress</span><span id="progress-text">0%</span></div>
+            <div class="progress-track"><div class="progress-fill" id="master-progress"></div></div>
+        </div>
+
+        <div class="nav-header" style="padding: 10px 20px; background: #fff; border-bottom: 1px solid #f1f5f9;">
+            <div class="nav-meta" style="font-weight:700;">SLIDES (<span id="total-slides">0</span>)</div>
+        </div>
+
         <div class="slide-list" id="slide-nav-list">
             </div>
     </div>
@@ -83,11 +155,6 @@
                     <div class="filter-chip" onclick="applyFilter('style', this)">Style</div>
                 </div>
             </div>
-            <div>
-                <button class="btn btn-primary" onclick="downloadDeck()" id="btn-download" disabled style="opacity:0.5;">
-                    <i class="fas fa-download"></i> Apply Fixes & Download
-                </button>
-            </div>
         </div>
 
         <div class="content-scroll" id="content-area">
@@ -101,6 +168,9 @@
     const auditData = {{ audit_data | tojson }};
     const stagedFixes = {};
     const aiResultsCache = {};
+    
+    // Safety check
+    if (!auditData) console.error("No Audit Data found!");
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!auditData) return;
@@ -114,11 +184,105 @@
         showSlide(1);
     });
 
+    // --- MODAL & BATCH LOGIC ---
+    function openBatchModal() {
+        const modal = document.getElementById('ai-warning-modal');
+        const estText = document.getElementById('token-estimate');
+        const count = auditData.summary.total_slides_checked;
+        
+        // Simple Estimate: 400 tokens per slide
+        const totalTokens = count * 400;
+        estText.innerHTML = `~ ${totalTokens.toLocaleString()} Tokens`;
+        modal.style.display = 'flex';
+    }
+
+    function closeBatchModal() {
+        document.getElementById('ai-warning-modal').style.display = 'none';
+    }
+
+    async function startBatchAnalysis() {
+        closeBatchModal();
+        const btn = document.getElementById('btn-batch-ai');
+        const progContainer = document.getElementById('progress-container');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+        progContainer.style.display = 'block';
+
+        const allContent = [];
+        if (auditData && auditData.slide_content) {
+            Object.keys(auditData.slide_content).forEach(k => {
+                allContent.push(auditData.slide_content[k]);
+            });
+        }
+        
+        const batchSize = 30; 
+        const totalSlides = allContent.length;
+        let processedCount = 0;
+        
+        for (let i = 0; i < totalSlides; i += batchSize) {
+            const chunk = allContent.slice(i, i + batchSize);
+            
+            try {
+                const response = await fetch('/run-ai-batch', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        slides: chunk,
+                        total_slides: totalSlides 
+                    })
+                });
+                const res = await response.json();
+                
+                if(res.status === 'success') {
+                    res.data.forEach(result => {
+                        aiResultsCache[result.slide_number] = result;
+                        // Real-time update if looking at this slide
+                        renderRemediationOptions(result.slide_number, result);
+                    });
+                }
+            } catch(e) { console.error("Batch Failed", e); }
+
+            processedCount += chunk.length;
+            const percent = Math.min(100, Math.round((processedCount / totalSlides) * 100));
+            document.getElementById('master-progress').style.width = percent + '%';
+            document.getElementById('progress-text').innerText = percent + '%';
+        }
+
+        btn.innerHTML = '<i class="fas fa-check"></i> Analysis Complete';
+        // Refresh current view
+        const currentId = document.querySelector('.slide-item.active')?.id.split('-')[2] || 1;
+        showSlide(parseInt(currentId));
+    }
+
+    // --- RE-UPLOAD LOGIC ---
+    function triggerReanalysis() { document.getElementById('reupload-input').click(); }
+    
+    async function performReanalysis(input) {
+        if (input.files && input.files[0]) {
+            const btn = document.getElementById('btn-analyze-all'); 
+            btn.disabled = true; 
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            
+            const formData = new FormData(); 
+            formData.set('file', input.files[0]);
+            
+            // Get ID from URL path (last segment)
+            const reportId = window.location.pathname.split('/').pop(); 
+            
+            try {
+                const response = await fetch(`/reanalyze/${reportId}`, { method: 'POST', body: formData });
+                const res = await response.json();
+                if(res.status === 'success') window.location.reload(); 
+                else { alert(res.message); btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Re-Upload Deck'; }
+            } catch(e) { alert("Error"); btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Re-Upload Deck'; }
+        }
+    }
+
+    // --- RENDER LOGIC ---
     function renderSidebar(data) {
         const list = document.getElementById('slide-nav-list');
         let html = '';
         
-        // Group issues by slide
         const grouped = {};
         for(let i=1; i<=data.summary.total_slides_checked; i++) grouped[i] = [];
         data.detailed_issues.forEach(issue => {
@@ -145,22 +309,19 @@
     }
 
     function showSlide(slideNum) {
-        // Highlight Sidebar
         document.querySelectorAll('.slide-item').forEach(el => el.classList.remove('active'));
         const navItem = document.getElementById(`nav-item-${slideNum}`);
         if (navItem) navItem.classList.add('active');
 
-        // Update Title
         document.getElementById('stage-title').innerText = `Slide ${slideNum} Findings`;
 
-        // Render Content
         const contentArea = document.getElementById('content-area');
         const issues = auditData.detailed_issues.filter(i => i.slide == slideNum);
         const isExempt = issues.some(i => i.result === "EXEMPT");
 
         let html = `<div class="slide-card">`;
         
-        // Header
+        // Header with Single Slide Analysis Button
         html += `
         <div class="slide-card-header">
             <div style="font-weight:700; color:#334155;">Forensic Analysis</div>
@@ -169,24 +330,20 @@
             </button>
         </div>`;
 
-        // AI Result Container
         html += `<div id="ai-result-${slideNum}"></div>`;
 
-        // Issues Table
         if (isExempt) {
             html += `<div style="padding:40px; text-align:center; color:#94a3b8;">This slide is exempt from analysis.</div>`;
         } else if (issues.length === 0) {
             html += `<div style="padding:40px; text-align:center; color:#166534;"><i class="fas fa-check-circle" style="font-size:2rem; margin-bottom:10px;"></i><br>No Issues Found</div>`;
         } else {
             html += `<table><thead><tr><th>Issue Type</th><th>Details</th><th>Recommended Action</th></tr></thead><tbody>`;
-            
             issues.forEach((issue, idx) => {
                 let badgeClass = issue.result === 'FAIL' ? 'issue-fail' : 'issue-warn';
                 let catClass = 'category-content';
                 if (issue.check.includes('WCAG')) catClass = 'category-wcag';
                 if (issue.check.includes('Font') || issue.check.includes('Style')) catClass = 'category-style';
 
-                // Logic for Fix Buttons
                 let fixBtn = '<span style="color:#94a3b8; font-size:0.8rem;">Manual Review</span>';
                 const shapeArg = (issue.shape_name || '').replace(/'/g, "\\'");
                 
@@ -209,7 +366,6 @@
         html += `</div>`;
         contentArea.innerHTML = html;
         
-        // Restore AI result if cached
         if (aiResultsCache[slideNum]) {
             renderRemediationOptions(slideNum, aiResultsCache[slideNum]);
         }
@@ -217,8 +373,7 @@
 
     // --- AI FUNCTIONALITY ---
     window.analyzeSlide = async function(slideNum, btn) {
-        if (aiResultsCache[slideNum]) return; // Already loaded
-
+        if (aiResultsCache[slideNum]) return; 
         btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
         
         const content = auditData.slide_content[slideNum];
@@ -279,7 +434,6 @@
     window.stageSafeFix = function(slideNum, type, shape, btn) {
         if (!stagedFixes[slideNum]) stagedFixes[slideNum] = [];
         stagedFixes[slideNum].push({ slide_number: slideNum, type: 'safe_compliance', rule: type, shape_name: shape });
-        
         btn.innerHTML = '<i class="fas fa-check"></i> Staged';
         btn.classList.add('staged');
         btn.disabled = true;
@@ -289,7 +443,6 @@
     window.stageFix = function(slideNum, target, text, btn) {
         if (!stagedFixes[slideNum]) stagedFixes[slideNum] = [];
         stagedFixes[slideNum].push({ slide_number: slideNum, type: 'content_rewrite', target: target, new_text: text });
-        
         btn.innerHTML = '<i class="fas fa-check"></i> Staged';
         btn.disabled = true;
         updateDownloadBtn();
@@ -327,7 +480,6 @@
     window.applyFilter = function(category, btn) {
         document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
-        
         document.querySelectorAll('.issue-row').forEach(row => {
             if (category === 'all' || row.classList.contains(`category-${category}`)) {
                 row.style.display = 'table-row';
