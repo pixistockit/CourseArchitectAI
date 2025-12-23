@@ -31,7 +31,6 @@ for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER, LOG_FOLDER, CONFIG_DIR]:
 app = Flask(__name__)
 
 # --- ADVANCED TEMPLATE LOADER ---
-# Allows extending 'layout.html' from platform_shell while using module templates
 platform_template_dir = os.path.join(BASE_DIR, 'platform_shell', 'templates')
 module_template_dir = os.path.join(BASE_DIR, 'modules', 'audit_slide', 'templates')
 app.jinja_loader = ChoiceLoader([
@@ -67,7 +66,6 @@ def get_or_create_cached_report(report_id, template_name, output_filename):
             cache_mtime = os.path.getmtime(cached_path)
             data_mtime = os.path.getmtime(json_path)
             template_mtime = os.path.getmtime(template_path)
-            # If cache is newer than both data and template, use it
             if cache_mtime > data_mtime and cache_mtime > template_mtime:
                 needs_rebuild = False
         except Exception as e:
@@ -80,7 +78,6 @@ def get_or_create_cached_report(report_id, template_name, output_filename):
             with open(json_path, 'r', encoding='utf-8') as f: 
                 full_data = json.load(f)
             
-            # Inject Data into JS const
             json_str = json.dumps(full_data)
             final_html = html_template.replace('/* INSERT_JSON_HERE */', f"const auditData = {json_str};")
             
@@ -96,13 +93,9 @@ def get_or_create_cached_report(report_id, template_name, output_filename):
 
 @app.route('/')
 def index():
-    """
-    Executive Dashboard (KPIs & High-level Stats)
-    """
     total_audits = 0
     all_scores = []
     
-    # 1. Calculate Stats from Files
     if os.path.exists(OUTPUT_FOLDER):
         for item in os.listdir(OUTPUT_FOLDER):
             json_path = os.path.join(OUTPUT_FOLDER, item, 'audit_report.json')
@@ -113,19 +106,17 @@ def index():
                         data = json.load(f)
                         score = data.get('summary', {}).get('executive_metrics', {}).get('wcag_compliance_rate', 0)
                         all_scores.append(score)
-                except: 
-                    pass
+                except: pass
 
     avg_score = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0
     
-    # 2. Calculate Tokens
     total_tokens = 0
     token_ledger_path = os.path.join(LOG_FOLDER, 'token_ledger.csv')
     if os.path.exists(token_ledger_path):
         try:
             with open(token_ledger_path, 'r') as f:
                 reader = csv.reader(f)
-                next(reader, None) # Skip header
+                next(reader, None) 
                 for row in reader:
                     if len(row) >= 6:
                         total_tokens += int(row[4]) + int(row[5])
@@ -135,17 +126,14 @@ def index():
         'total_audits': total_audits,
         'avg_compliance_score': avg_score,
         'tokens_consumed_monthly': total_tokens,
-        'active_users': 1  # Hardcoded for single-tenant version
+        'active_users': 1 
     }
 
-    # 3. Get Recent Logs
     system_logs = logger_service.get_recent_logs(limit=5)
-
     return render_template('dashboard.html', active_page='dashboard', kpis=kpi_data, system_logs=system_logs)
 
 @app.route('/settings')
 def settings():
-    # Load Configurations
     llm_config_path = os.path.join(CONFIG_DIR, 'llm_config.json')
     brand_config_path = os.path.join(CONFIG_DIR, 'brand_config.json')
     
@@ -157,10 +145,8 @@ def settings():
     if os.path.exists(brand_config_path):
         with open(brand_config_path, 'r') as f: brand_config = json.load(f)
 
-    # Defaults
     llm_config.setdefault('default_buffer', getattr(CFG, 'BUFFER_ACTIVITY_SLIDE', 5.0))
     
-    # Format Blacklist for Textarea
     if 'blacklist' in llm_config:
         val = llm_config['blacklist']
         display_str = ""
@@ -177,7 +163,6 @@ def settings():
 def save_settings():
     form_data = request.form.to_dict()
     
-    # Process Blacklist (Text -> Dict)
     raw_text = form_data.get('blacklist', '')
     blacklist_dict = {}
     for line in raw_text.splitlines():
@@ -187,7 +172,6 @@ def save_settings():
             val = parts[1].strip() if len(parts) > 1 else ""
             blacklist_dict[key] = val
 
-    # LLM Config Keys
     llm_keys = [
         'agent_1_provider', 'agent_2_provider', 'agent_3_provider',
         'gemini_api_key', 'openai_api_key', 'anthropic_api_key', 'groq_api_key', 'mistral_api_key',
@@ -198,7 +182,6 @@ def save_settings():
     llm_config = {k: form_data.get(k, '') for k in llm_keys}
     llm_config['blacklist'] = blacklist_dict
 
-    # Brand Config Keys
     raw_headers = form_data.get('required_headers', '')
     headers_list = [h.strip() for h in raw_headers.splitlines() if h.strip()]
     
@@ -231,9 +214,6 @@ def save_settings():
 
 @app.route('/projects')
 def projects_page():
-    """
-    Lists all audits grouped by Project Name.
-    """
     projects = {}
     if os.path.exists(OUTPUT_FOLDER):
         for item in os.listdir(OUTPUT_FOLDER):
@@ -260,7 +240,6 @@ def projects_page():
                     except Exception as e:
                         logger_service.log_system('warning', f"Error reading report {item}: {e}")
 
-    # Sort files by date descending
     for p in projects: 
         projects[p].sort(key=lambda x: x['date'], reverse=True)
 
@@ -280,19 +259,15 @@ def upload_file():
             filename = secure_filename(file.filename)
             unique_id = str(uuid.uuid4())
             
-            # Save Input
             save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(save_path)
             
-            # Prepare Output
             audit_output_dir = os.path.join(app.config['OUTPUT_FOLDER'], unique_id)
             os.makedirs(audit_output_dir, exist_ok=True)
             
-            # --- RUN THE CORE AUDIT TOOL ---
             logger_service.log_system('info', f"Starting audit for {filename} ({unique_id})")
             run_audit_slide(save_path, audit_output_dir)
             
-            # Update Project Name in JSON if provided
             project_name = request.form.get('project_name')
             json_path = os.path.join(audit_output_dir, 'audit_report.json')
             
@@ -311,7 +286,6 @@ def upload_file():
 
 @app.route('/new-audit')
 def new_audit():
-    # Scan for existing projects to populate dropdown
     existing_projects = set()
     if os.path.exists(OUTPUT_FOLDER):
         for item in os.listdir(OUTPUT_FOLDER):
@@ -324,13 +298,12 @@ def new_audit():
                         if p: existing_projects.add(p)
                 except: pass
     
-    # Load defaults for form
     llm_config_path = os.path.join(CONFIG_DIR, 'llm_config.json')
     defaults = {}
     if os.path.exists(llm_config_path):
         with open(llm_config_path, 'r') as f: defaults = json.load(f)
 
-    return render_template('index.html', active_page='projects', existing_projects=sorted(list(existing_projects)), defaults=defaults)
+    return render_template('new_audit.html', active_page='projects', existing_projects=sorted(list(existing_projects)), defaults=defaults)
 
 @app.route('/view-report/<report_id>')
 def view_report(report_id):
@@ -340,23 +313,17 @@ def view_report(report_id):
 
 @app.route('/view-workstation/<report_id>')
 def view_workstation(report_id):
-    """
-    Renders the dynamic ID Workstation using the new template.
-    """
-    # 1. Locate the source JSON data
     json_path = os.path.join(app.config['OUTPUT_FOLDER'], report_id, 'audit_report.json')
     
     if not os.path.exists(json_path):
         return f"Error: Report data not found for ID {report_id}", 404
 
-    # 2. Load data to pass to the template
     try:
         with open(json_path, 'r', encoding='utf-8') as f:
             audit_data = json.load(f)
     except Exception as e:
         return f"Error reading report JSON: {e}", 500
 
-    # 3. Render the dynamic template
     return render_template('workstation.html', active_page='projects', audit_data=audit_data)
 
 @app.route('/delete/<report_id>', methods=['POST'])
@@ -400,7 +367,6 @@ def reanalyze_deck(report_id):
     
     if file and file.filename.lower().endswith(('.pptx', '.ppt')):
         try:
-            # Overwrite existing folder
             audit_output_dir = os.path.join(app.config['OUTPUT_FOLDER'], report_id)
             filename = secure_filename(file.filename)
             save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{report_id}_{filename}")
@@ -423,10 +389,8 @@ def apply_fix_batch():
     if not filename or not fixes: 
         return jsonify({"status": "error", "message": "Missing filename or fixes"}), 400
 
-    # Locate file (Uploads or Reports folder)
     input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if not os.path.exists(input_path):
-        # Fallback search in reports
         for root, _, files in os.walk(app.config['OUTPUT_FOLDER']):
             if filename in files:
                 input_path = os.path.join(root, filename)
@@ -456,6 +420,44 @@ def apply_fix_batch():
 def download_fixed(filename):
     directory = os.path.join(app.config['OUTPUT_FOLDER'], 'remediated_decks')
     return send_from_directory(directory, filename, as_attachment=True)
+
+# --- AI ENDPOINTS (FIXED MISSING ROUTES) ---
+
+@app.route('/run-ai-batch', methods=['POST'])
+def run_ai_batch():
+    """
+    Endpoint for Batch AI Analysis (All Slides).
+    """
+    try:
+        data = request.json
+        slides = data.get('slides', [])
+        total_count = data.get('total_slides', 0)
+        
+        engine = AIEngine()
+        results = engine.analyze_batch(slides, total_slide_count=total_count)
+        
+        return jsonify({"status": "success", "data": results})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/run-ai-agent', methods=['POST'])
+def run_ai_agent():
+    """
+    Endpoint for Single Slide Analysis.
+    """
+    try:
+        slide_data = request.json
+        engine = AIEngine()
+        
+        # Analyze single slide
+        results = engine.analyze_batch([slide_data], total_slide_count=0)
+        
+        if results:
+            return jsonify({"status": "success", "data": results[0]})
+        else:
+            return jsonify({"status": "error", "message": "No data returned"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
