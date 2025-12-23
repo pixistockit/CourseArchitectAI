@@ -57,11 +57,13 @@
     .sidebar-logo { background-color: var(--intelligent-teal); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
     .sidebar-logo-icon { width: 24px; height: 24px; stroke: var(--white); }
     .sidebar-title { font-family: var(--font-headers); font-size: 1.25rem; font-weight: 700; }
-    .sidebar-nav { display: flex; flex-direction: column; gap: 8px; }
-    .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 6px; text-decoration: none; color: var(--slate-300); font-weight: 500; font-size: 0.95rem; transition: background-color 0.2s ease, color 0.2s ease; }
+    .sidebar-nav { display: flex; flex-direction: column; } /* Removed gap for section headers */
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 6px; text-decoration: none; color: var(--slate-300); font-weight: 500; font-size: 0.95rem; transition: background-color 0.2s ease, color 0.2s ease; margin-bottom: 4px; }
     .nav-link:hover { background-color: rgba(255, 255, 255, 0.05); color: var(--white); }
     .nav-link.active { background-color: var(--intelligent-teal); color: var(--white); font-weight: 600; }
     .nav-icon { width: 20px; height: 20px; stroke-width: 2; }
+    /* NEW: Style for section headers */
+    .nav-section-header { color: var(--slate-500); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 24px 16px 8px; }
     .page-header { margin-bottom: 32px; }
     .page-title { font-family: var(--font-headers); font-size: 2rem; font-weight: 800; color: var(--primary-navy); margin-bottom: 4px; }
     .page-subtitle { font-size: 1rem; color: var(--slate-500); }
@@ -183,14 +185,23 @@
             <span class="sidebar-title">Precision Stack</span>
         </div>
         <nav class="sidebar-nav">
+            <!-- === GLOBAL LINKS === -->
             <a href="{{ url_for('index') }}" class="nav-link {{ 'active' if active_page == 'dashboard' else '' }}">
                 <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                 <span>Dashboard</span>
             </a>
+
+            <!-- === MODULES SECTION === -->
+            <div class="nav-section-header">Modules</div>
+            
             <a href="{{ url_for('projects_page') }}" class="nav-link {{ 'active' if active_page == 'projects' else '' }}">
                 <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                <span>Projects</span>
+                <span>AuditSlide</span>
             </a>
+
+            <!-- === PLATFORM SECTION === -->
+            <div class="nav-section-header">Platform</div>
+
             <a href="{{ url_for('settings') }}" class="nav-link {{ 'active' if active_page == 'settings' else '' }}">
                 <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 <span>Settings</span>
