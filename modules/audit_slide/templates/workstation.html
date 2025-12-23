@@ -5,17 +5,15 @@
 {% block content %}
 <style>
     /* --- FORCE FULLSCREEN WORKSTATION (ZEN MODE) --- */
-    /* Hide global sidebar and header when in workstation mode */
     .sidebar, .toggle-sidebar-btn, #sidebar-floater { display: none !important; }
     .main-content { padding: 0 !important; overflow: hidden; height: 100vh; }
     
     /* WORKSTATION LAYOUT */
     .workstation-container { display: flex; height: 100vh; width: 100vw; background: #f8fafc; }
     
-    /* LEFT PANEL: SLIDE NAVIGATOR */
+    /* LEFT PANEL */
     .slide-nav-panel { width: 340px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.03); }
     
-    /* NEW: BACK BUTTON HEADER */
     .app-header { padding: 15px 20px; background: var(--primary-navy); color: white; display: flex; align-items: center; gap: 10px; }
     .btn-back { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
     .btn-back:hover { color: white; }
@@ -24,7 +22,6 @@
     .nav-title { font-size: 1.1rem; font-weight: 800; color: var(--primary-navy); letter-spacing: -0.5px; margin: 0; }
     .nav-meta { font-size: 0.8rem; color: #64748b; margin-top: 4px; font-weight: 500; }
     
-    /* ACTION PANEL */
     .action-panel { padding: 15px; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 10px; background: #fff; }
     
     .btn-sidebar { 
@@ -41,26 +38,23 @@
     }
     #btn-batch-ai:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4); color: white; }
 
-    /* PROGRESS BAR */
     .progress-container { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; display: none; }
     .progress-label { font-size: 0.75rem; font-weight: 700; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 6px; }
     .progress-track { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
     .progress-fill { height: 100%; background: var(--intelligent-teal); width: 0%; transition: width 0.3s; }
 
-    /* SLIDE LIST */
     .slide-list { flex: 1; overflow-y: auto; }
     .slide-item { padding: 14px 20px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
     .slide-item:hover { background: #f8fafc; }
     .slide-item.active { background: #e0f2fe; border-left: 4px solid var(--intelligent-teal); }
     .slide-label { font-weight: 600; color: var(--slate-700); font-size: 0.9rem; }
     
-    /* BADGES */
     .count-badge { padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; min-width: 24px; text-align: center; }
     .badge-fail { background: #fee2e2; color: #b91c1c; }
     .badge-clean { background: #dcfce7; color: #166534; }
     .badge-exempt { background: #f1f5f9; color: #64748b; }
 
-    /* CENTER PANEL: MAIN STAGE */
+    /* MAIN STAGE */
     .main-stage { flex: 1; display: flex; flex-direction: column; background: #f8fafc; overflow: hidden; position: relative; }
     .stage-header { padding: 20px 30px; background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     .stage-title { font-size: 1.25rem; font-weight: 800; color: var(--primary-navy); }
@@ -71,23 +65,23 @@
 
     .content-scroll { flex: 1; overflow-y: auto; padding: 30px; }
     
-    /* ISSUE CARDS */
     .slide-card { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 30px; overflow: hidden; }
     .slide-card-header { padding: 20px 30px; background: #fff; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
     
-    /* MODAL STYLES */
+    /* MODAL STYLES (User Requested) */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
-    .modal-box { background: white; width: 500px; padding: 30px; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: slideUp 0.3s ease; }
+    .modal-box { background: white; width: 600px; padding: 30px; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); animation: slideUp 0.3s ease; }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .modal-header { font-size: 1.25rem; font-weight: 800; color: var(--primary-navy); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
     .modal-body { color: var(--slate-500); line-height: 1.6; font-size: 0.95rem; margin-bottom: 25px; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
     .info-pill { background: #f0f9ff; color: var(--intelligent-teal); padding: 4px 12px; border-radius: 15px; font-size: 0.75rem; font-weight: 700; display: inline-block; margin-top: 10px; border: 1px solid #bae6fd; }
+    .cost-estimate { margin-top: 20px; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
 
-    /* ISSUE TABLE & AI BOX Styles */
     .btn-ai { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
     .btn-ai:hover { opacity: 0.9; transform: translateY(-1px); }
     .btn-ai:disabled { background: #cbd5e1; cursor: not-allowed; }
+    
     table { width: 100%; border-collapse: collapse; }
     th { text-align: left; padding: 15px 30px; background: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
     td { padding: 20px 30px; border-bottom: 1px solid #f1f5f9; vertical-align: top; color: #334155; font-size: 0.95rem; }
@@ -97,6 +91,7 @@
     .btn-fix { background: #fff; border: 1px solid var(--compliance-green); color: var(--compliance-green); padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-fix:hover { background: var(--compliance-green); color: white; }
     .btn-fix.staged { background: var(--compliance-green); color: white; cursor: default; opacity: 0.7; }
+    
     .remediation-box { background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid var(--intelligent-teal); padding: 20px; margin: 20px 30px; border-radius: 4px; }
     .critique-text { color: #475569; font-style: italic; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.6; }
     .fix-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -108,15 +103,24 @@
     <div class="modal-box">
         <div class="modal-header"><i class="fas fa-brain" style="color:#6366f1;"></i> Start Global Analysis?</div>
         <div class="modal-body">
-            This will send your slide content to the configured AI Provider for forensic analysis.
-            <br>
-            <span class="info-pill"><i class="fas fa-layer-group"></i> Processing Batch Size: 30 Slides</span>
+            This process will send your slide content to the configured AI Provider (e.g., OpenAI, Google) for forensic analysis. Each batch of 30 slides can take up to ~5 minutes to complete depending on slide complexity. Do not close the tab until the process has finished.
             <br><br>
-            <strong>Cost Estimate:</strong> <span id="token-estimate">Calculating...</span>
+            NOTE: The AI must analyze each individual slide and create recommended notes, please be patient. 
+            <br><br>                
+            <span class="info-pill"><i class="fas fa-layer-group"></i> Processing Batch Size: 30 Slides</span>
+            
+            <div class="cost-estimate">
+                <strong>Token Usage Estimate:</strong><br>
+                <span id="token-estimate">Calculating...</span><br>
+                <span style="font-size:0.8rem; color:#666;">(Based on Gemini 2.5 Flash pricing: ~$0.15 / 1M tokens)</span>
+                <br><br>
+                <strong>GDPR / Privacy Notice:</strong><br>
+                Ensure your project allows data processing by third-party AI models. Do not submit PII or confidential data if restricted.
+            </div>
         </div>
         <div class="modal-actions">
-            <button class="btn-sidebar" onclick="closeBatchModal()">Cancel</button>
-            <button class="btn-sidebar" style="background:var(--intelligent-teal); color:white; border:none;" onclick="startBatchAnalysis()">Confirm & Start</button>
+            <button class="btn-sidebar" style="background:#94a3b8; border:none;" onclick="closeBatchModal()">Cancel</button>
+            <button class="btn-sidebar primary" style="background:var(--intelligent-teal); color:white; border:none;" onclick="startBatchAnalysis()"><i class="fas fa-bolt"></i> Confirm & Start</button>
         </div>
     </div>
 </div>
@@ -327,15 +331,21 @@
         const issues = auditData.detailed_issues.filter(i => i.slide == slideNum);
         const isExempt = issues.some(i => i.result === "EXEMPT");
 
+        // Logic to hide AI Button if Exempt
+        let aiButtonHtml = '';
+        if (!isExempt) {
+            aiButtonHtml = `
+            <button class="btn-ai" onclick="analyzeSlide(${slideNum}, this)" id="btn-ai-${slideNum}">
+                <i class="fas fa-robot"></i> Consult AI Agent
+            </button>`;
+        }
+
         let html = `<div class="slide-card">`;
         
-        // Header with Single Slide Analysis Button
         html += `
         <div class="slide-card-header">
             <div style="font-weight:700; color:#334155;">Forensic Analysis</div>
-            <button class="btn-ai" onclick="analyzeSlide(${slideNum}, this)" id="btn-ai-${slideNum}">
-                <i class="fas fa-robot"></i> Consult AI Agent
-            </button>
+            ${aiButtonHtml}
         </div>`;
 
         html += `<div id="ai-result-${slideNum}"></div>`;
