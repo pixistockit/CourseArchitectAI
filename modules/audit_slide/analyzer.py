@@ -341,7 +341,7 @@ class PptxAnalyzer:
                     slide_issues.append({"slide": slide_index, "check": "WCAG Graphic Contrast", "shape_name": shape.name, "result": "FAIL", "ratio": f"{ratio:.1f}:1 (Req: {WCAG_MIN_GRAPHIC_RATIO}:1)", "colors_used": f"Obj: {obj_rgb} on BG: {bg_rgb}", "suggested_fix_color": suggested, "details": f"Low contrast graphics. Ratio: {ratio:.1f}:1"})
         except (AttributeError, TypeError): pass
 
-    # --- RESTORED: NOTES FORMATTING CHECK (Was Missing) ---
+# --- RESTORED & OPTIMIZED: NOTES FORMATTING CHECK ---
     def _check_notes_formatting(self, slide, slide_index, slide_issues):
         if not slide.has_notes_slide: return
         notes_tf = slide.notes_slide.notes_text_frame
@@ -354,23 +354,40 @@ class PptxAnalyzer:
         self._check_spelling(clean_text, "Speaker Notes", slide_index, slide_issues)
         self._check_citations(full_text, "Speaker Notes", slide_index, slide_issues)
 
+        # Optimization: Flags to prevent duplicate errors per slide
+        font_error_logged = False
+        size_error_logged = False
+        color_error_logged = False
+
         for paragraph in notes_tf.paragraphs:
             for run in paragraph.runs:
                 if not run.text.strip(): continue
-                if run.font.name is None: raw_font_name = "+mn-lt" 
-                else: raw_font_name = run.font.name
-                f_name = self._resolve_font_name(raw_font_name)
-                f_size = run.font.size.pt if run.font.size else 12
-                if f_name != NOTES_FONT_NAME: 
-                    slide_issues.append({"slide": slide_index, "check": "Notes Formatting", "shape_name": "Speaker Notes", "result": "FAIL", "details": f"Notes font is '{raw_font_name}' (Should be {NOTES_FONT_NAME})"})
-                if not (NOTES_FONT_SIZE_MIN <= f_size <= NOTES_FONT_SIZE_MAX): 
-                    slide_issues.append({"slide": slide_index, "check": "Notes Formatting", "shape_name": "Speaker Notes", "result": "FAIL", "details": f"Notes size is {f_size}pt (Should be {NOTES_FONT_SIZE_MIN}-{NOTES_FONT_SIZE_MAX})"})
-                try:
-                    if run.font.color.rgb:
-                        c_rgb = rgb_pptx_to_tuple(run.font.color.rgb)
-                        if c_rgb != NOTES_FONT_COLOR_RGB: 
-                            slide_issues.append({"slide": slide_index, "check": "Notes Formatting", "shape_name": "Speaker Notes", "result": "FAIL", "details": "Notes font color is not Black."})
-                except AttributeError: pass
+                
+                # Check Font Name
+                if not font_error_logged:
+                    if run.font.name is None: raw_font_name = "+mn-lt" 
+                    else: raw_font_name = run.font.name
+                    f_name = self._resolve_font_name(raw_font_name)
+                    if f_name != NOTES_FONT_NAME: 
+                        slide_issues.append({"slide": slide_index, "check": "Notes Formatting", "shape_name": "Speaker Notes", "result": "FAIL", "details": f"Notes font is '{raw_font_name}' (Should be {NOTES_FONT_NAME})"})
+                        font_error_logged = True # Stop checking font name for this slide
+
+                # Check Font Size
+                if not size_error_logged:
+                    f_size = run.font.size.pt if run.font.size else 12
+                    if not (NOTES_FONT_SIZE_MIN <= f_size <= NOTES_FONT_SIZE_MAX): 
+                        slide_issues.append({"slide": slide_index, "check": "Notes Formatting", "shape_name": "Speaker Notes", "result": "FAIL", "details": f"Notes size is {f_size}pt (Should be {NOTES_FONT_SIZE_MIN}-{NOTES_FONT_SIZE_MAX})"})
+                        size_error_logged = True # Stop checking font size for this slide
+
+                # Check Font Color
+                if not color_error_logged:
+                    try:
+                        if run.font.color.rgb:
+                            c_rgb = rgb_pptx_to_tuple(run.font.color.rgb)
+                            if c_rgb != NOTES_FONT_COLOR_RGB: 
+                                slide_issues.append({"slide": slide_index, "check": "Notes Formatting", "shape_name": "Speaker Notes", "result": "FAIL", "details": "Notes font color is not Black."})
+                                color_error_logged = True # Stop checking color for this slide
+                    except AttributeError: pass
 
     def _check_notes_content(self, slide, slide_index, slide_issues):
         if not slide.has_notes_slide: return
