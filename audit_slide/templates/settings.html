@@ -3,81 +3,257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuditSlide - Settings</title>
+    <title>AuditSlide AI - Settings</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <style>
-        :root { --navy: #0A2342; --teal: #005F73; --bg: #F4F6F8; --white: #FFF; --border: #E1E4E8; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; color: #333; }
-        .sidebar { width: 260px; background: var(--navy); color: white; display: flex; flex-direction: column; padding: 20px; }
-        .brand { font-size: 1.5rem; font-weight: 700; margin-bottom: 40px; display: flex; align-items: center; gap: 10px; }
-        .nav-item { padding: 12px 15px; color: rgba(255,255,255,0.7); text-decoration: none; border-radius: 8px; margin-bottom: 5px; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
-        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; }
-        .nav-item.btn-new { background: var(--teal); color: white; margin-top: 20px; justify-content: center; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        .main { flex: 1; overflow-y: auto; padding: 40px; padding-bottom: 100px; }
-        .header { margin-bottom: 30px; border-bottom: 1px solid #ccc; padding-bottom: 20px; }
-        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; max-width: 1200px; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
-        .card-title { font-size: 1.1rem; font-weight: 700; color: var(--navy); margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; font-weight: 600; font-size: 0.9rem; color: #444; margin-bottom: 6px; }
-        .form-group small { display: block; color: #666; font-size: 0.85rem; margin-bottom: 8px; line-height: 1.5; }
-        input, textarea, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; }
-        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .toggle-switch { position: relative; width: 50px; height: 26px; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--teal); }
-        input:checked + .slider:before { transform: translateX(24px); }
-
-        /* FIXED TOOLTIP STYLE */
-        .tooltip-icon { color: var(--teal); cursor: help; margin-left: 5px; position: relative; display: inline-block; }
-        .tooltip-icon:hover::after { 
-            content: attr(data-tip); 
-            position: absolute; 
-            left: 100%; 
-            top: 50%; 
-            transform: translateY(-50%); 
-            background: #2d3748; 
-            color: #fff; 
-            padding: 10px 14px; 
-            border-radius: 6px; 
-            font-size: 0.75rem; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
-            z-index: 100; 
-            margin-left: 10px; 
-            pointer-events: none;
-            white-space: normal;      
-            width: 220px;             
-            line-height: 1.4;         
-            text-align: left;         
-            letter-spacing: 0.8px;    
-            font-family: 'Segoe UI', sans-serif;
+        /* BRAND PALETTE */
+        :root { 
+            --navy: #0A2342; 
+            --teal: #005F73; 
+            --amber: #E9B44C; 
+            --green: #2A9D8F; 
+            --bg: #F4F6F8; 
+            --white: #FFFFFF; 
+            --border: #E2E8F0;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
         }
 
-        .provider-section { display: none; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef; margin-top: 15px; animation: fadeIn 0.3s ease; }
-        .provider-section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            display: flex; 
+            height: 100vh; 
+            color: var(--text-main); 
+            font-size: 16px;
+            overflow: hidden; 
+        }
+        
+        /* SIDEBAR */
+        .sidebar { width: 260px; background: var(--navy); color: white; display: flex; flex-direction: column; padding: 24px; flex-shrink: 0; }
+        .brand { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.4rem; font-weight: 800; margin-bottom: 48px; display: flex; align-items: center; gap: 12px; letter-spacing: -0.5px; }
+        .nav-item { padding: 12px 16px; color: rgba(255,255,255,0.75); text-decoration: none; border-radius: 8px; margin-bottom: 4px; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 0.95rem; transition: 0.2s; }
+        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; }
+        .nav-item.btn-new { background: var(--teal); color: white; margin-top: 24px; justify-content: center; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 14px; }
+        .nav-item.btn-new:hover { transform: translateY(-1px); background: #004c5c; }
 
-        .btn-save { position: fixed; bottom: 30px; right: 30px; background: var(--teal); color: white; border: none; padding: 15px 40px; border-radius: 30px; font-weight: 700; cursor: pointer; box-shadow: 0 5px 20px rgba(0,95,115,0.4); z-index: 100; }
-        #msg { position: fixed; bottom: 90px; right: 30px; background: #2A9D8F; color: white; font-weight: 600; display: none; padding: 12px 20px; border-radius: 8px; z-index: 200; }
+        /* MAIN AREA */
+        .main { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 40px 60px; 
+            padding-bottom: 120px; 
+            scroll-behavior: smooth;
+        }
+
+        .header { margin-bottom: 40px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        .header h1 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: var(--navy); margin: 0; font-size: 1.8rem; letter-spacing: -0.5px; }
+        .header p { color: var(--text-muted); margin-top: 8px; font-weight: 400; font-size: 1rem; }
+
+        /* CARD GRID */
+        .settings-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
+            gap: 32px; 
+            max-width: 1400px; 
+        }
+
+        .card { 
+            background: white; 
+            padding: 32px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: fadeInUp 0.5s ease-out forwards;
+            opacity: 0;
+        }
+        
+        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
+
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.2s; }
+        .card:nth-child(3) { animation-delay: 0.3s; }
+        .card:nth-child(4) { animation-delay: 0.4s; }
+        .card:nth-child(5) { animation-delay: 0.5s; }
+
+        .card-title { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            font-size: 1.1rem; 
+            font-weight: 700; 
+            color: var(--navy); 
+            margin-bottom: 24px; 
+            padding-bottom: 12px; 
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* FORMS */
+        .form-group { margin-bottom: 24px; }
+        .form-group label { 
+            display: block; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700; 
+            font-size: 0.9rem; 
+            color: var(--navy); 
+            margin-bottom: 8px; 
+        }
+        .form-group small { display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 10px; line-height: 1.5; }
+        
+        /* MODERN INPUTS & TEXTAREAS */
+        input, textarea { 
+            width: 100%; 
+            padding: 12px 16px; 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            font-family: 'Inter', sans-serif; 
+            font-size: 0.95rem; 
+            color: var(--text-main);
+            background: #F8FAFC;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, textarea:focus {
+            background: white;
+            border-color: var(--teal);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 95, 115, 0.1);
+        }
+
+        /* --- MODERN DROPDOWN (SELECT) STYLING --- */
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            padding-right: 40px; /* Space for the arrow */
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            background-color: #F8FAFC;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            
+            /* Remove default browser arrow */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            
+            /* Custom Arrow Icon (SVG encoded) */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px;
+        }
+
+        select:hover {
+            border-color: #cbd5e1;
+            background-color: #fff;
+        }
+
+        select:focus {
+            background-color: white;
+            border-color: var(--teal);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 95, 115, 0.1);
+            /* Darken arrow on focus */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23005F73' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        }
+        /* ----------------------------------------- */
+
+        /* TOGGLES */
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .toggle-row:last-child { border-bottom: none; }
+        .toggle-row span { font-weight: 600; color: var(--navy); font-size: 0.95rem; }
+        
+        .toggle-switch { position: relative; width: 48px; height: 26px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #CBD5E1; transition: .3s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input:checked + .slider { background-color: var(--teal); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* CHECKBOX GROUP */
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .checkbox-group input { width: auto; margin: 0; accent-color: var(--teal); width: 18px; height: 18px; cursor: pointer; }
+        .checkbox-group label { margin: 0; font-weight: 500; cursor: pointer; color: var(--text-main); }
+
+        /* TOOLTIPS */
+        .tooltip-icon { color: var(--teal); cursor: help; margin-left: 6px; position: relative; display: inline-block; transition: color 0.2s; }
+        .tooltip-icon:hover { color: var(--navy); }
+        .tooltip-icon:hover::after { 
+            content: attr(data-tip); 
+            position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%);
+            background: var(--navy); color: #fff; padding: 12px; border-radius: 8px;
+            font-size: 0.8rem; width: 220px; text-align: center; line-height: 1.4;
+            pointer-events: none; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin-bottom: 8px; font-weight: 400;
+        }
+
+        /* PROVIDER SECTION */
+        .provider-section { display: none; padding: 20px; background: #F8FAFC; border-radius: 8px; border: 1px dashed var(--border); margin-top: 15px; }
+        .provider-section.active { display: block; animation: slideDown 0.3s ease; }
+        
+        /* ACTION BAR */
+        .btn-save { 
+            position: fixed; bottom: 40px; right: 40px; 
+            background: var(--teal); color: white; border: none; 
+            padding: 16px 40px; border-radius: 50px; 
+            font-weight: 700; font-size: 1rem; 
+            cursor: pointer; 
+            box-shadow: 0 10px 25px rgba(0, 95, 115, 0.3); 
+            z-index: 100; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(0, 95, 115, 0.4); background: #004c5c; }
+        .btn-save:active { transform: scale(0.98); }
+
+        #msg { position: fixed; bottom: 110px; right: 40px; background: var(--green); color: white; font-weight: 600; display: none; padding: 12px 24px; border-radius: 8px; z-index: 200; box-shadow: 0 4px 12px rgba(42, 157, 143, 0.3); animation: slideInRight 0.3s ease; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
     </style>
 </head>
 <body>
+
 <div class="sidebar">
-    <div class="brand"><i class="fas fa-layer-group"></i> AuditSlide</div>
+    <div class="brand">
+        <i class="fas fa-layer-group" style="color: var(--teal);"></i> AuditSlide AI
+    </div>
+    
     <a href="/" class="nav-item"><i class="fas fa-th-large"></i> Dashboard</a>
-    <a href="/" class="nav-item"><i class="fas fa-folder"></i> All Projects</a>
+    <a href="/projects" class="nav-item"><i class="fas fa-folder"></i> All Projects</a>
     <a href="/settings" class="nav-item active"><i class="fas fa-cog"></i> Settings</a>
+    
     <a href="/new-audit" class="nav-item btn-new"><i class="fas fa-plus"></i> New Audit</a>
 </div>
+
 <div class="main">
-    <div class="header"><h1>Global Configuration</h1><p style="color:#666; margin-top:5px;">Define standards and connect AI Brains.</p></div>
+    <div class="header">
+        <h1>Global Configuration</h1>
+        <p>Define enterprise standards, compliance rules, and AI connections.</p>
+    </div>
+
     <form id="settings-form">
         <div class="settings-grid">
             
-            <div class="card" style="border-left: 5px solid #E9B44C;">
-                <div class="card-title"><i class="fas fa-sitemap"></i> Agent Orchestration</div>
+            <div class="card" style="border-left: 4px solid var(--amber);">
+                <div class="card-title"><i class="fas fa-brain" style="color:var(--amber);"></i> Agent Orchestration</div>
                 
                 <div class="form-group">
                     <label>Agent 1: Slide Forensic (Micro)</label>
@@ -116,8 +292,8 @@
                 </div>
             </div>
 
-            <div class="card" style="border-left: 5px solid var(--teal);">
-                <div class="card-title"><i class="fas fa-key"></i> Provider Keys</div>
+            <div class="card" style="border-left: 4px solid var(--teal);">
+                <div class="card-title"><i class="fas fa-key" style="color:var(--teal);"></i> Security & Keys</div>
                 
                 <div class="form-group">
                     <label>Select Provider to Configure</label>
@@ -152,23 +328,22 @@
                 </div>
 
                 <div id="settings-AWS_BEDROCK" class="provider-section">
-                    <label style="margin-bottom:10px; display:block; color:#666;">AWS Bedrock Credentials</label>
+                    <label style="margin-bottom:12px; display:block; color:var(--text-muted); font-size:0.85rem; font-weight:600;">AWS CREDENTIALS</label>
                     <div class="form-group"><input type="text" name="aws_access_key" value="{{ config.aws_access_key }}" placeholder="Access Key ID"></div>
                     <div class="form-group"><input type="password" name="aws_secret_key" value="{{ config.aws_secret_key }}" placeholder="Secret Access Key"></div>
                     <div class="form-group"><input type="text" name="aws_region" value="{{ config.aws_region }}" placeholder="Region (e.g. us-east-1)"></div>
                 </div>
-
             </div>
             
-            <div class="card" style="border-left: 5px solid #6366f1;">
-                <div class="card-title"><i class="fas fa-magic"></i> Brand & Auto-Fixer Rules</div>
-                <div class="form-group"><label>Title Font (Fixer Target)</label><input type="text" name="title_font" value="{{ brand_config.title_font or 'Rockwell' }}" placeholder="Rockwell"></div>
-                <div class="form-group"><label>Body Font (Fixer Target)</label><input type="text" name="body_font" value="{{ brand_config.body_font or 'Calibri' }}" placeholder="Calibri"></div>
-                <div class="form-group"><label>Body Font Size (Fixer Target)</label><input type="number" name="body_font_size" value="{{ brand_config.body_font_size or '24' }}" placeholder="24"></div>
-                <div class="form-group"><label>Allowed Body Fonts (Analyzer Rules)</label><small>Comma-separated list.</small><input type="text" name="allowed_fonts" value="{{ brand_config.allowed_fonts|join(', ') if brand_config.allowed_fonts else 'Calibri, MV Boli, Arial' }}" placeholder="Calibri, Arial, Verdana"></div>
-                <div class="form-group"><label>Notes Font</label><input type="text" name="notes_font" value="{{ brand_config.notes_font or 'Calibri' }}" placeholder="Calibri"></div>
-                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
-                    <h4 style="margin-top:0; color:#475569; font-size:0.9rem; text-transform:uppercase;">AI Exemption Rules</h4>
+            <div class="card" style="border-left: 4px solid #6366f1;">
+                <div class="card-title"><i class="fas fa-magic" style="color:#6366f1;"></i> Brand & Auto-Fixer</div>
+                <div class="form-group"><label>Title Font (Target)</label><input type="text" name="title_font" value="{{ brand_config.title_font or 'Rockwell' }}" placeholder="Rockwell"></div>
+                <div class="form-group"><label>Body Font (Target)</label><input type="text" name="body_font" value="{{ brand_config.body_font or 'Calibri' }}" placeholder="Calibri"></div>
+                <div class="form-group"><label>Body Font Size</label><input type="number" name="body_font_size" value="{{ brand_config.body_font_size or '24' }}" placeholder="24"></div>
+                <div class="form-group"><label>Allowed Body Fonts</label><small>Comma-separated whitelist.</small><input type="text" name="allowed_fonts" value="{{ brand_config.allowed_fonts|join(', ') if brand_config.allowed_fonts else 'Calibri, MV Boli, Arial' }}" placeholder="Calibri, Arial, Verdana"></div>
+                
+                <div style="background: #F8FAFC; padding: 20px; border-radius: 8px; border: 1px dashed var(--border); margin-bottom: 20px;">
+                    <h4 style="margin-top:0; color:var(--navy); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:15px;">AI Exclusion Rules</h4>
 
                     <div class="checkbox-group">
                         <input type="checkbox" id="exempt_first" name="exempt_first_slide" {% if brand_config.exempt_first_slide %}checked{% endif %}>
@@ -180,15 +355,15 @@
                         <label for="exempt_last">Skip Last Slide</label>
                     </div>
 
-                    <div class="form-group" style="margin-top:10px;">
-                        <label>Specific Slides to Skip (comma separated)</label>
+                    <div class="form-group" style="margin-top:15px; margin-bottom:0;">
+                        <label>Specific Slides to Skip</label>
                         <input type="text" name="exempt_specific_slides" value="{{ brand_config.exempt_specific_slides }}" placeholder="e.g. 5, 10, 12">
                     </div>
                 </div>                
             </div>
 
-            <div class="card">
-                <div class="card-title"><i class="fas fa-graduation-cap"></i> Instructional Standards</div>
+            <div class="card" style="border-left: 4px solid var(--navy);">
+                <div class="card-title"><i class="fas fa-graduation-cap" style="color:var(--navy);"></i> Instructional Standards</div>
                 <div class="form-group"><label>Target Grade Level</label><input type="number" name="default_grade" value="{{ config.default_grade }}" min="1" max="18"></div>
                 
                 <div class="form-group">
@@ -200,7 +375,7 @@
 
                 <div class="form-group"><label>Max Words Per Slide</label><input type="number" name="max_words_per_slide" value="{{ config.max_words_per_slide }}"></div>
                 
-                <div class="form-group" style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+                <div class="form-group" style="margin-top:20px; border-top:1px solid #eee; padding-top:20px;">
                     <label>Speaker Notes Schema 
                         <i class="fas fa-question-circle tooltip-icon" data-tip="Required headers. One per line. Order matters."></i>
                     </label>
@@ -209,44 +384,38 @@
                 </div>
             </div>
 
-            <div class="card">
-                <div class="card-title"><i class="fas fa-universal-access"></i> Accessibility (WCAG)</div>
+            <div class="card" style="border-left: 4px solid var(--green);">
+                <div class="card-title"><i class="fas fa-universal-access" style="color:var(--green);"></i> Accessibility (WCAG)</div>
                 <div class="form-group"><label>Contrast Ratio Threshold</label><input type="number" name="contrast_ratio" value="{{ config.contrast_ratio }}" step="0.1"></div>
-                <div class="form-group"><label>Minimum Font Size (pt) <small>(Audit Threshold)</small></label><input type="number" name="min_font_size" value="{{ config.min_font_size }}"></div>
-                <div class="form-group"><label>Compliance Strictness</label><select name="wcag_strictness"><option value="aa">AA</option><option value="aaa">AAA</option></select></div>
+                <div class="form-group"><label>Minimum Font Size (pt)</label><input type="number" name="min_font_size" value="{{ config.min_font_size }}"></div>
+                <div class="form-group"><label>Compliance Strictness</label><select name="wcag_strictness"><option value="aa">AA (Standard)</option><option value="aaa">AAA (Strict)</option></select></div>
             </div>
 
-            <div class="card">
-                <div class="card-title"><i class="fas fa-award"></i> Quality & Brand</div>
+            <div class="card" style="border-left: 4px solid #D946EF;">
+                <div class="card-title"><i class="fas fa-award" style="color:#D946EF;"></i> Quality Assurance</div>
                 <div class="form-group">
-                    <label>Global Jargon Blacklist <i class="fas fa-question-circle tooltip-icon" data-tip="Words to flag or replace in the audit."></i></label>
-                    <small>One entry per line. Format: <b>BadWord</b> on a single line means (Flag only) OR adding a colon like <b>BadWord: GoodWord</b> on a single line means (Flag & Suggest) replacement word provided).</small>
-                    <textarea name="blacklist" rows="6" placeholder="utilize: use&#10;facilitate: help&#10;synergy">{{ config.blacklist_display }}</textarea>
+                    <label>Global Jargon Blacklist <i class="fas fa-question-circle tooltip-icon" data-tip="Words to flag or replace. Format: 'BadWord' or 'BadWord: Replacement'"></i></label>
+                    <textarea name="blacklist" rows="5" placeholder="utilize: use&#10;facilitate: help">{{ config.blacklist_display }}</textarea>
                 </div>
                 <div class="form-group">
-                    <label>Speaker Notes Scripting Level</label>
-                    <div class="select-wrapper">
-                        <select name="notes_scripting_level">
-                            <option value="Basic" {% if brand_config.notes_scripting_level == 'Basic' %}selected{% endif %}>Basic (Directive / Outline)</option>
-                            <option value="Light" {% if brand_config.notes_scripting_level == 'Light' or not brand_config.notes_scripting_level %}selected{% endif %}>Light (Conversational / Default)</option>
-                            <option value="Heavy" {% if brand_config.notes_scripting_level == 'Heavy' %}selected{% endif %}>Heavy (Verbatim Script)</option>
-                        </select>
-                    </div>
-                    <div class="help-text">
-                        <strong>Basic:</strong> "Explain the concept."<br>
-                        <strong>Light:</strong> "Here is the concept..." (Conversational)<br>
-                        <strong>Heavy:</strong> "The concept is defined as..." (Word-for-word)
-                    </div>
+                    <label>Scripting Fidelity</label>
+                    <select name="notes_scripting_level">
+                        <option value="Basic" {% if brand_config.notes_scripting_level == 'Basic' %}selected{% endif %}>Basic (Directive / Outline)</option>
+                        <option value="Light" {% if brand_config.notes_scripting_level == 'Light' or not brand_config.notes_scripting_level %}selected{% endif %}>Light (Conversational / Default)</option>
+                        <option value="Heavy" {% if brand_config.notes_scripting_level == 'Heavy' %}selected{% endif %}>Heavy (Verbatim Script)</option>
+                    </select>
                 </div>                
                 <div class="toggle-row"><span>Check Spelling</span><label class="toggle-switch"><input type="checkbox" name="check_spelling" value="true" {% if config.check_spelling == 'true' %}checked{% endif %}><span class="slider"></span></label></div>
                 <div class="toggle-row"><span>Check Grammar</span><label class="toggle-switch"><input type="checkbox" name="check_grammar" value="true" {% if config.check_grammar == 'true' %}checked{% endif %}><span class="slider"></span></label></div>
             </div>
 
         </div>
-        <div id="msg"><i class="fas fa-check-circle"></i> Saved!</div>
+
+        <div id="msg"><i class="fas fa-check-circle"></i> Settings Saved Successfully!</div>
         <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Configuration</button>
     </form>
 </div>
+
 <script>
     function showProviderSettings(provider) {
         document.querySelectorAll('.provider-section').forEach(el => el.classList.remove('active'));
@@ -258,7 +427,12 @@
         e.preventDefault();
         const btn = document.querySelector('.btn-save');
         const msg = document.getElementById('msg');
-        btn.disabled = true; btn.innerText = "Saving...";
+        
+        // Button Loading State
+        const originalText = btn.innerHTML;
+        btn.disabled = true; 
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+        btn.style.opacity = "0.8";
         
         const formData = new FormData(e.target);
         if(!e.target.check_spelling.checked) formData.set('check_spelling', 'false');
@@ -266,8 +440,14 @@
         
         await fetch('/save-settings', { method: 'POST', body: formData });
         
-        btn.disabled = false; btn.innerText = "Save Configuration";
-        msg.style.display = "block"; setTimeout(() => { msg.style.display = "none"; }, 3000);
+        // Reset Button
+        btn.disabled = false; 
+        btn.innerHTML = originalText;
+        btn.style.opacity = "1";
+        
+        // Show Toast
+        msg.style.display = "block"; 
+        setTimeout(() => { msg.style.display = "none"; }, 3000);
     };
 </script>
 </body>
