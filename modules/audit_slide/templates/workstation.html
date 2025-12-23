@@ -3,154 +3,338 @@
 {% block title %}ID Workstation{% endblock %}
 
 {% block content %}
-<!-- This block will contain the specific HTML, CSS, and JS for the workstation -->
 <style>
-    /* Workstation-specific CSS is encapsulated here */
-    .workstation-grid {
-        display: grid;
-        grid-template-columns: 300px 1fr 350px;
-        height: calc(100vh - 80px); /* Full height minus main padding */
-        gap: 20px;
-    }
-    .panel { background: var(--white); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow: hidden; }
-    .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--slate-200); }
-    .panel-title { font-family: var(--font-headers); font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); }
-    .panel-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
-
-    /* Left Panel: Slide List */
-    .slide-list { list-style: none; padding: 0; margin: 0; }
-    .slide-item { padding: 12px 20px; cursor: pointer; border-left: 4px solid transparent; transition: all 0.2s; font-weight: 500; }
-    .slide-item:hover { background-color: var(--slate-100); }
-    .slide-item.active { background-color: #eef7ff; border-left-color: var(--intelligent-teal); color: var(--primary-navy); font-weight: 700; }
+    /* --- WORKSTATION SPECIFIC STYLES (Merged from report_spa.html) --- */
+    .workstation-container { display: flex; height: calc(100vh - 80px); gap: 0; } /* Remove gap for seamless sidebar */
     
-    /* Center Panel: Main Content */
-    .slide-title { font-family: var(--font-headers); font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 16px; }
-    .content-section { margin-bottom: 24px; }
-    .section-title { font-size: 0.8rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--slate-200); padding-bottom: 4px; }
-    .slide-text, .slide-notes { font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; }
+    /* LEFT PANEL: SLIDE NAVIGATOR */
+    .slide-nav-panel { width: 300px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
+    .nav-header { padding: 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+    .nav-title { font-size: 0.9rem; font-weight: 700; color: var(--primary-navy); text-transform: uppercase; letter-spacing: 0.5px; }
+    .slide-list { flex: 1; overflow-y: auto; }
+    .slide-item { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
+    .slide-item:hover { background: #f8fafc; }
+    .slide-item.active { background: #e0f2fe; border-left: 4px solid var(--intelligent-teal); }
+    .slide-label { font-weight: 600; color: var(--slate-700); font-size: 0.9rem; }
+    
+    /* BADGES */
+    .count-badge { padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; min-width: 24px; text-align: center; }
+    .badge-fail { background: #fee2e2; color: #b91c1c; }
+    .badge-clean { background: #dcfce7; color: #166534; }
+    .badge-exempt { background: #f1f5f9; color: #64748b; }
 
-    /* Right Panel: Issues */
-    .issue-item { border: 1px solid var(--slate-200); border-radius: 8px; margin-bottom: 12px; padding: 12px; }
-    .issue-header { font-weight: 700; margin-bottom: 8px; }
-    .issue-details { font-size: 0.9rem; color: var(--slate-700); }
+    /* CENTER PANEL: MAIN STAGE */
+    .main-stage { flex: 1; display: flex; flex-direction: column; background: #f8fafc; overflow: hidden; }
+    .stage-header { padding: 20px 30px; background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    .stage-title { font-size: 1.25rem; font-weight: 800; color: var(--primary-navy); }
+    
+    /* FILTER BAR */
+    .filter-bar { display: flex; gap: 10px; }
+    .filter-chip { padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #64748b; transition: all 0.2s; }
+    .filter-chip.active { background: var(--intelligent-teal); color: #fff; border-color: var(--intelligent-teal); }
+
+    /* CONTENT AREA */
+    .content-scroll { flex: 1; overflow-y: auto; padding: 30px; }
+    
+    /* ISSUE CARDS */
+    .slide-card { background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 30px; overflow: hidden; }
+    .slide-card-header { padding: 20px 30px; background: #fff; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+    .btn-ai { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+    .btn-ai:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-ai:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+    /* ISSUE TABLE */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 15px 30px; background: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
+    td { padding: 20px 30px; border-bottom: 1px solid #f1f5f9; vertical-align: top; color: #334155; font-size: 0.95rem; }
+    .issue-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+    .issue-fail { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+    .issue-warn { background: #fefce8; color: #a16207; border: 1px solid #fef9c3; }
+    
+    /* FIX BUTTONS */
+    .btn-fix { background: #fff; border: 1px solid var(--compliance-green); color: var(--compliance-green); padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-fix:hover { background: var(--compliance-green); color: white; }
+    .btn-fix.staged { background: var(--compliance-green); color: white; cursor: default; opacity: 0.7; }
+
+    /* AI REMEDIATION BOX */
+    .remediation-box { background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid var(--intelligent-teal); padding: 20px; margin: 20px 30px; border-radius: 4px; }
+    .critique-text { color: #475569; font-style: italic; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.6; }
+    .fix-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .fix-option { background: white; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; }
+    .fix-title { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 10px; }
 </style>
 
-<div class="workstation-grid">
-    <!-- Left Panel: Slide Navigator -->
-    <div class="panel">
-        <div class="panel-header">
-            <h3 class="panel-title">Slides</h3>
+<div class="workstation-container">
+    <div class="slide-nav-panel">
+        <div class="nav-header">
+            <div class="nav-title">Slides (<span id="total-slides">0</span>)</div>
         </div>
-        <div class="panel-body" style="padding: 0;">
-            <ul id="slide-list" class="slide-list">
-                <!-- Slide items will be dynamically inserted here -->
-            </ul>
-        </div>
+        <div class="slide-list" id="slide-nav-list">
+            </div>
     </div>
 
-    <!-- Center Panel: Slide Content -->
-    <div class="panel">
-        <div class="panel-body" id="main-content-panel">
-            <h2 id="slide-title" class="slide-title">Select a slide</h2>
-            <div id="slide-content-area" style="display: none;">
-                <div class="content-section">
-                    <h4 class="section-title">On-Screen Text</h4>
-                    <p id="slide-text" class="slide-text"></p>
-                </div>
-                <div class="content-section">
-                    <h4 class="section-title">Speaker Notes</h4>
-                    <p id="slide-notes" class="slide-notes"></p>
+    <div class="main-stage">
+        <div class="stage-header">
+            <div>
+                <div class="stage-title" id="stage-title">Select a Slide</div>
+                <div class="filter-bar" style="margin-top:10px;">
+                    <div class="filter-chip active" onclick="applyFilter('all', this)">All Issues</div>
+                    <div class="filter-chip" onclick="applyFilter('wcag', this)">Compliance</div>
+                    <div class="filter-chip" onclick="applyFilter('style', this)">Style</div>
                 </div>
             </div>
+            <div>
+                <button class="btn btn-primary" onclick="downloadDeck()" id="btn-download" disabled style="opacity:0.5;">
+                    <i class="fas fa-download"></i> Apply Fixes & Download
+                </button>
+            </div>
         </div>
-    </div>
 
-    <!-- Right Panel: AI Analysis & Issues -->
-    <div class="panel">
-        <div class="panel-header">
-            <h3 class="panel-title">AI Analysis</h3>
-        </div>
-        <div class="panel-body" id="issues-panel">
-            <!-- Issues will be dynamically inserted here -->
-        </div>
+        <div class="content-scroll" id="content-area">
+            </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // This script block contains all the logic to power the workstation
     const auditData = {{ audit_data | tojson }};
+    const stagedFixes = {};
+    const aiResultsCache = {};
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const slideList = document.getElementById('slide-list');
-        const slideTitle = document.getElementById('slide-title');
-        const slideContentArea = document.getElementById('slide-content-area');
-        const slideText = document.getElementById('slide-text');
-        const slideNotes = document.getElementById('slide-notes');
-        const issuesPanel = document.getElementById('issues-panel');
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!auditData) return;
+        
+        // 1. Initialize Slide List
+        const totalSlides = auditData.summary.total_slides_checked;
+        document.getElementById('total-slides').innerText = totalSlides;
+        renderSidebar(auditData);
+        
+        // 2. Show First Slide
+        showSlide(1);
+    });
 
-        function renderSlideList() {
-            auditData.slides.forEach((slide, index) => {
-                const li = document.createElement('li');
-                li.className = 'slide-item';
-                li.textContent = `Slide ${slide.slide_number}: ${slide.title || 'Untitled'}`;
-                li.dataset.slideIndex = index;
-                slideList.appendChild(li);
-            });
-        }
-
-        function renderSlideContent(index) {
-            const slide = auditData.slides[index];
-            const aiAnalysis = auditData.ai_analysis.find(a => a.slide_number === slide.slide_number);
-
-            // Update center panel
-            slideTitle.textContent = `Slide ${slide.slide_number}: ${slide.title || 'Untitled'}`;
-            slideText.textContent = slide.full_text || 'No on-screen text found.';
-            slideNotes.textContent = slide.notes || 'No speaker notes found.';
-            slideContentArea.style.display = 'block';
-
-            // Update right panel (issues)
-            issuesPanel.innerHTML = ''; // Clear previous issues
-            if (aiAnalysis) {
-                let issuesHtml = `
-                    <div class="issue-item">
-                        <div class="issue-header">Clarity Score</div>
-                        <div class="issue-details">${aiAnalysis.clarity_score || 'N/A'} / 10</div>
-                    </div>
-                    <div class="issue-item">
-                        <div class="issue-header">Tone Audit</div>
-                        <div class="issue-details">${aiAnalysis.tone_audit || 'N/A'}</div>
-                    </div>
-                `;
-                if (aiAnalysis.suggested_notes) {
-                    issuesHtml += `
-                    <div class="issue-item">
-                        <div class="issue-header">Suggested Notes</div>
-                        <div class="issue-details" style="white-space: pre-wrap;">${aiAnalysis.suggested_notes}</div>
-                    </div>
-                    `;
-                }
-                issuesPanel.innerHTML = issuesHtml;
-            } else {
-                issuesPanel.innerHTML = '<p>No AI analysis available for this slide.</p>';
-            }
-        }
-
-        slideList.addEventListener('click', function(e) {
-            if (e.target && e.target.matches('li.slide-item')) {
-                // Remove active class from all items
-                document.querySelectorAll('.slide-item').forEach(item => item.classList.remove('active'));
-                // Add active class to clicked item
-                e.target.classList.add('active');
-                
-                const slideIndex = e.target.dataset.slideIndex;
-                renderSlideContent(slideIndex);
-            }
+    function renderSidebar(data) {
+        const list = document.getElementById('slide-nav-list');
+        let html = '';
+        
+        // Group issues by slide
+        const grouped = {};
+        for(let i=1; i<=data.summary.total_slides_checked; i++) grouped[i] = [];
+        data.detailed_issues.forEach(issue => {
+            if (!grouped[issue.slide]) grouped[issue.slide] = [];
+            grouped[issue.slide].push(issue);
         });
 
-        // Initial render
-        renderSlideList();
-    });
+        Object.keys(grouped).forEach(slideNum => {
+            const issues = grouped[slideNum];
+            const isExempt = issues.some(i => i.result === "EXEMPT");
+            const count = issues.filter(i => i.result !== "EXEMPT").length;
+            
+            let badgeClass = count > 0 ? 'badge-fail' : 'badge-clean';
+            let badgeText = count > 0 ? count : '✓';
+            if (isExempt) { badgeClass = 'badge-exempt'; badgeText = 'E'; }
+
+            html += `
+            <div class="slide-item" onclick="showSlide(${slideNum})" id="nav-item-${slideNum}">
+                <span class="slide-label">Slide ${slideNum}</span>
+                <span class="count-badge ${badgeClass}">${badgeText}</span>
+            </div>`;
+        });
+        list.innerHTML = html;
+    }
+
+    function showSlide(slideNum) {
+        // Highlight Sidebar
+        document.querySelectorAll('.slide-item').forEach(el => el.classList.remove('active'));
+        const navItem = document.getElementById(`nav-item-${slideNum}`);
+        if (navItem) navItem.classList.add('active');
+
+        // Update Title
+        document.getElementById('stage-title').innerText = `Slide ${slideNum} Findings`;
+
+        // Render Content
+        const contentArea = document.getElementById('content-area');
+        const issues = auditData.detailed_issues.filter(i => i.slide == slideNum);
+        const isExempt = issues.some(i => i.result === "EXEMPT");
+
+        let html = `<div class="slide-card">`;
+        
+        // Header
+        html += `
+        <div class="slide-card-header">
+            <div style="font-weight:700; color:#334155;">Forensic Analysis</div>
+            <button class="btn-ai" onclick="analyzeSlide(${slideNum}, this)" id="btn-ai-${slideNum}">
+                <i class="fas fa-robot"></i> Consult AI Agent
+            </button>
+        </div>`;
+
+        // AI Result Container
+        html += `<div id="ai-result-${slideNum}"></div>`;
+
+        // Issues Table
+        if (isExempt) {
+            html += `<div style="padding:40px; text-align:center; color:#94a3b8;">This slide is exempt from analysis.</div>`;
+        } else if (issues.length === 0) {
+            html += `<div style="padding:40px; text-align:center; color:#166534;"><i class="fas fa-check-circle" style="font-size:2rem; margin-bottom:10px;"></i><br>No Issues Found</div>`;
+        } else {
+            html += `<table><thead><tr><th>Issue Type</th><th>Details</th><th>Recommended Action</th></tr></thead><tbody>`;
+            
+            issues.forEach((issue, idx) => {
+                let badgeClass = issue.result === 'FAIL' ? 'issue-fail' : 'issue-warn';
+                let catClass = 'category-content';
+                if (issue.check.includes('WCAG')) catClass = 'category-wcag';
+                if (issue.check.includes('Font') || issue.check.includes('Style')) catClass = 'category-style';
+
+                // Logic for Fix Buttons
+                let fixBtn = '<span style="color:#94a3b8; font-size:0.8rem;">Manual Review</span>';
+                const shapeArg = (issue.shape_name || '').replace(/'/g, "\\'");
+                
+                if (issue.check.includes('Font') && issue.details.includes('below minimum')) {
+                    fixBtn = `<button class="btn-fix" onclick="stageSafeFix(${slideNum}, 'fix_font_size', '${shapeArg}', this)"><i class="fas fa-magic"></i> Auto Fix Fonts</button>`;
+                } else if (issue.check.includes('WCAG') && issue.details.includes('Contrast')) {
+                     fixBtn = `<button class="btn-fix" onclick="stageSafeFix(${slideNum}, 'fix_contrast', '${shapeArg}', this)"><i class="fas fa-palette"></i> Smart Contrast</button>`;
+                }
+
+                html += `
+                <tr class="issue-row ${catClass}">
+                    <td><span class="issue-badge ${badgeClass}">${issue.check}</span></td>
+                    <td>${issue.details}</td>
+                    <td>${fixBtn}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+        }
+        
+        html += `</div>`;
+        contentArea.innerHTML = html;
+        
+        // Restore AI result if cached
+        if (aiResultsCache[slideNum]) {
+            renderRemediationOptions(slideNum, aiResultsCache[slideNum]);
+        }
+    }
+
+    // --- AI FUNCTIONALITY ---
+    window.analyzeSlide = async function(slideNum, btn) {
+        if (aiResultsCache[slideNum]) return; // Already loaded
+
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        
+        const content = auditData.slide_content[slideNum];
+        if (!content) { alert("No content found."); btn.disabled = false; return; }
+
+        try {
+            const response = await fetch('/run-ai-agent', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    slide_number: slideNum, 
+                    title: content.title, 
+                    full_text: content.full_text, 
+                    notes: content.notes 
+                })
+            });
+            const res = await response.json();
+            if(res.status === 'success') {
+                aiResultsCache[slideNum] = res.data;
+                renderRemediationOptions(slideNum, res.data);
+                btn.innerHTML = '<i class="fas fa-check"></i> Analysis Ready';
+            } else {
+                alert("AI Error: " + res.message);
+                btn.disabled = false; btn.innerHTML = 'Retry';
+            }
+        } catch(e) { console.error(e); btn.disabled = false; btn.innerHTML = 'Error'; }
+    }
+
+    window.renderRemediationOptions = function(slideNum, data) {
+        const container = document.getElementById(`ai-result-${slideNum}`);
+        if (!container) return;
+
+        const optA = data.remediation?.option_a || { label: "Polish", text: "N/A" };
+        const optB = data.remediation?.option_b || { label: "Simplify", text: "N/A" };
+
+        container.innerHTML = `
+        <div class="remediation-box">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <strong style="color:var(--intelligent-teal);"><i class="fas fa-brain"></i> AI Insights</strong>
+                <span style="background:#fff; padding:2px 8px; border-radius:10px; font-weight:700; font-size:0.8rem;">Clarity: ${data.clarity_score}/10</span>
+            </div>
+            <div class="critique-text">"${data.tone_audit}"</div>
+            <div class="fix-grid">
+                <div class="fix-option">
+                    <div class="fix-title">OPTION A: ${optA.label}</div>
+                    <div style="font-size:0.9rem;">${optA.text}</div>
+                    <button class="btn-fix" style="width:100%; margin-top:10px;" onclick="stageFix(${slideNum}, 'content', '${optA.text.replace(/'/g, "\\'")}', this)">Apply</button>
+                </div>
+                <div class="fix-option">
+                    <div class="fix-title">OPTION B: ${optB.label}</div>
+                    <div style="font-size:0.9rem;">${optB.text}</div>
+                    <button class="btn-fix" style="width:100%; margin-top:10px;" onclick="stageFix(${slideNum}, 'content', '${optB.text.replace(/'/g, "\\'")}', this)">Apply</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // --- FIX STAGING ---
+    window.stageSafeFix = function(slideNum, type, shape, btn) {
+        if (!stagedFixes[slideNum]) stagedFixes[slideNum] = [];
+        stagedFixes[slideNum].push({ slide_number: slideNum, type: 'safe_compliance', rule: type, shape_name: shape });
+        
+        btn.innerHTML = '<i class="fas fa-check"></i> Staged';
+        btn.classList.add('staged');
+        btn.disabled = true;
+        updateDownloadBtn();
+    }
+
+    window.stageFix = function(slideNum, target, text, btn) {
+        if (!stagedFixes[slideNum]) stagedFixes[slideNum] = [];
+        stagedFixes[slideNum].push({ slide_number: slideNum, type: 'content_rewrite', target: target, new_text: text });
+        
+        btn.innerHTML = '<i class="fas fa-check"></i> Staged';
+        btn.disabled = true;
+        updateDownloadBtn();
+    }
+
+    function updateDownloadBtn() {
+        const btn = document.getElementById('btn-download');
+        btn.disabled = false;
+        btn.style.opacity = 1;
+    }
+
+    window.downloadDeck = async function() {
+        const btn = document.getElementById('btn-download');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        let allFixes = [];
+        Object.values(stagedFixes).forEach(arr => allFixes = allFixes.concat(arr));
+
+        try {
+            const response = await fetch('/apply-fix-batch', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ filename: auditData.summary.presentation_name, fixes: allFixes })
+            });
+            const res = await response.json();
+            if (res.status === 'success') {
+                window.location.href = res.download_url;
+                btn.innerHTML = '<i class="fas fa-check"></i> Done';
+            } else {
+                alert("Error: " + res.message);
+                btn.innerHTML = '<i class="fas fa-download"></i> Try Again';
+            }
+        } catch(e) { alert("Network Error"); }
+    }
+
+    window.applyFilter = function(category, btn) {
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        
+        document.querySelectorAll('.issue-row').forEach(row => {
+            if (category === 'all' || row.classList.contains(`category-${category}`)) {
+                row.style.display = 'table-row';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
 </script>
 {% endblock %}
