@@ -10,7 +10,13 @@ import requests
 from datetime import datetime
 
 # --- Provider SDKs ---
-import google.genai as genai
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    print("⚠️ Google Generative AI SDK not found. Install via: pip install google-generativeai")
+
 from openai import OpenAI
 import anthropic
 from groq import Groq
@@ -30,7 +36,7 @@ MODEL_MAPPING = {
     "AGENT_1": {
         "ANTHROPIC": "claude-3-sonnet-20240229",
         "AWS_BEDROCK": "anthropic.claude-3-haiku-20240307-v1:0",
-        "GEMINI": "gemini-2.5-flash-lite", 
+        "GEMINI": "gemini-2.0-flash-lite", 
         "GROQ": "openai/gpt-oss-20b",
         "MISTRALAI": "mistral-small-latest",
         "OPENAI": "gpt-5-nano"
@@ -38,7 +44,7 @@ MODEL_MAPPING = {
     "AGENT_2": {
         "ANTHROPIC": None,
         "AWS_BEDROCK": "anthropic.claude-3-sonnet-20240229-v1:0",
-        "GEMINI": "gemini-2.5-flash",
+        "GEMINI": "gemini-2.0-flash",
         "GROQ": "llama-3.3-70b-versatile",
         "MISTRALAI": "magistral-small-latest",
         "OPENAI": "gpt-4.1-mini"
@@ -46,7 +52,7 @@ MODEL_MAPPING = {
     "AGENT_3": {
         "ANTHROPIC": None,
         "AWS_BEDROCK": "amazon.nova-pro-v1:0",
-        "GEMINI": "gemini-2.5-flash",
+        "GEMINI": "gemini-2.0-flash",
         "GROQ": "llama-3.3-70b-versatile",
         "MISTRALAI": "magistral-medium-latest",
         "OPENAI": "gpt-5"
@@ -106,8 +112,13 @@ class AIEngine:
         try:
             client = None
             if provider == "GEMINI":
-                genai.configure(api_key=self.config.get('gemini_api_key'))
-                client = genai
+                # FIXED: Standard Initialization Logic
+                api_key = self.config.get('gemini_api_key')
+                if api_key and GEMINI_AVAILABLE:
+                    genai.configure(api_key=api_key)
+                    client = genai
+                else:
+                    sys_logger.error("Gemini Key Missing or SDK not found")
             elif provider == "OPENAI":
                 client = OpenAI(api_key=self.config.get('openai_api_key'))
             elif provider == "ANTHROPIC":
