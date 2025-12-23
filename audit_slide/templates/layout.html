@@ -1,15 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}AuditSlide AI{% endblock %} - Precision Stack</title>
-    
-    <!-- FONTS: Import Precision Stack Typography -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-
     <style>
         /* ----------------------------------------- */
         /* --- PRECISION STACK: GLOBAL STYLESHEET --- */
@@ -21,20 +9,16 @@
             --intelligent-teal: #005F73;
             --action-amber: #E9B44C;
             --compliance-green: #2A9D8F;
-            --alert-red: #B82B3E; /* Added for errors */
+            --alert-red: #B82B3E;
             
             /* UI PALETTE */
             --background-grey: #F4F6F8;
             --slate-100: #f1f5f9;
+            --slate-200: #e2e8f0;
             --slate-300: #cbd5e1;
             --slate-500: #64748b;
             --slate-700: #334155;
             --white: #FFFFFF;
-
-            /* TYPOGRAPHY */
-            --font-headers: 'Plus Jakarta Sans', sans-serif;
-            --font-body: 'Inter', sans-serif;
-            --font-data: 'IBM Plex Mono', monospace;
         }
 
         /* --- BASE RESET --- */
@@ -123,7 +107,7 @@
             stroke-width: 2px;
         }
 
-        /* --- UTILITY & SHARED COMPONENTS --- */
+        /* --- SHARED COMPONENTS (NEW) --- */
         .page-header {
             margin-bottom: 32px;
         }
@@ -138,44 +122,136 @@
             font-size: 1rem;
             color: var(--slate-500);
         }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: var(--font-headers);
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary {
+            background-color: var(--intelligent-teal);
+            color: var(--white);
+            box-shadow: 0 4px 12px rgba(0, 95, 115, 0.2);
+        }
+        .btn-primary:hover {
+            background-color: #004c5c;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 95, 115, 0.3);
+        }
 
+        .project-groups-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .project-card {
+            background-color: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        .project-card-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--slate-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .project-card-title {
+            font-family: var(--font-headers);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary-navy);
+        }
+        .project-card-meta {
+            font-size: 0.85rem;
+            color: var(--slate-500);
+            font-weight: 500;
+        }
+        .project-card-body {
+            padding: 8px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .data-table thead {
+            border-bottom: 1px solid var(--slate-200);
+        }
+        .data-table th {
+            font-family: var(--font-headers);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--slate-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .data-table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+        
+        .score-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .score-green { background-color: #eaf8f7; color: #1e6b62; }
+        .score-amber { background-color: #fef6e9; color: #a17424; }
+        .score-red { background-color: #fde8ea; color: #9c2b3e; }
+
+        .btn-action {
+            background: none;
+            border: 1px solid var(--slate-300);
+            color: var(--slate-700);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            margin-right: 8px;
+        }
+        .btn-action:hover {
+            background-color: var(--slate-100);
+            border-color: var(--slate-500);
+        }
+        .btn-action.btn-delete:hover {
+            background-color: var(--alert-red);
+            border-color: var(--alert-red);
+            color: var(--white);
+        }
+        
+        .empty-state-card {
+            background-color: var(--white);
+            border-radius: 12px;
+            text-align: center;
+            padding: 60px 40px;
+            border: 2px dashed var(--slate-200);
+        }
+        .empty-state-card h3 {
+            font-family: var(--font-headers);
+            color: var(--primary-navy);
+            font-size: 1.5rem;
+        }
+        .empty-state-card p {
+            color: var(--slate-500);
+            margin-top: 8px;
+            margin-bottom: 16px;
+        }
     </style>
-</head>
-<body>
-
-    <!-- MASTER SIDEBAR NAVIGATION -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-logo">
-                <!-- Icon: Layers -->
-                <svg class="sidebar-logo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-            </div>
-            <span class="sidebar-title">Precision Stack</span>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="{{ url_for('index') }}" class="nav-link {{ 'active' if active_page == 'dashboard' else '' }}">
-                <!-- Icon: Home -->
-                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                <span>Dashboard</span>
-            </a>
-            <a href="{{ url_for('projects_page') }}" class="nav-link {{ 'active' if active_page == 'projects' else '' }}">
-                <!-- Icon: Folder -->
-                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                <span>Projects</span>
-            </a>
-            <a href="{{ url_for('settings') }}" class="nav-link {{ 'active' if active_page == 'settings' else '' }}">
-                <!-- Icon: Settings -->
-                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                <span>Settings</span>
-            </a>
-        </nav>
-    </aside>
-
-    <!-- MAIN CONTENT AREA (Page-specific content injected here) -->
-    <main class="main-content">
-        {% block content %}{% endblock %}
-    </main>
-    
-    {% block scripts %}{% endblock %}
-</body>
-</html>
