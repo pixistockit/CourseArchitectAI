@@ -8,7 +8,70 @@
     <p class="page-subtitle">High-level platform KPIs and system status overview.</p>
 </div>
 
-<!-- Add Dashboard-specific widgets and content here -->
-<p>Dashboard content will be built out in the next phase, including KPI cards for audits, token consumption, and active users, along with a feed from the system log.</p>
+<!-- KPI Card Grid -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-icon icon-audits">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        </div>
+        <div class="kpi-content">
+            <div class="kpi-value">{{ kpis.get('total_audits', 0) }}</div>
+            <div class="kpi-label">Total Audits</div>
+        </div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-icon icon-score">
+             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        </div>
+        <div class="kpi-content">
+            <div class="kpi-value">{{ "%.1f"|format(kpis.get('avg_compliance_score', 0)) }}%</div>
+            <div class="kpi-label">Avg. Compliance Score</div>
+        </div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-icon icon-tokens">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div class="kpi-content">
+            <div class="kpi-value">{{ "{:,}".format(kpis.get('tokens_consumed_monthly', 0)) }}</div>
+            <div class="kpi-label">Tokens Consumed (Month)</div>
+        </div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-icon icon-users">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <div class="kpi-content">
+            <div class="kpi-value">{{ kpis.get('active_users', 0) }}</div>
+            <div class="kpi-label">Active Users</div>
+        </div>
+    </div>
+</div>
 
+<!-- Recent Activity Log -->
+<div class="activity-log-card">
+    <div class="activity-log-header">
+        <h3 class="activity-log-title">Recent System Activity</h3>
+    </div>
+    <div class="activity-log-body">
+        <table class="activity-table">
+            <tbody>
+                {% if system_logs %}
+                    {% for log in system_logs %}
+                    <tr>
+                        <td class="log-level log-{{ log.level.lower() }}">{{ log.level }}</td>
+                        <td class="log-message">{{ log.message }}</td>
+                        <td class="log-meta">{{ log.ip }}</td>
+                        <td class="log-meta">{{ log.timestamp }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 20px; color: var(--slate-500);">No system activity logged yet.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
