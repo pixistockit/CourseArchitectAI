@@ -1,0 +1,156 @@
+{% extends 'layout.html' %}
+
+{% block title %}ID Workstation{% endblock %}
+
+{% block content %}
+<!-- This block will contain the specific HTML, CSS, and JS for the workstation -->
+<style>
+    /* Workstation-specific CSS is encapsulated here */
+    .workstation-grid {
+        display: grid;
+        grid-template-columns: 300px 1fr 350px;
+        height: calc(100vh - 80px); /* Full height minus main padding */
+        gap: 20px;
+    }
+    .panel { background: var(--white); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--slate-200); }
+    .panel-title { font-family: var(--font-headers); font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); }
+    .panel-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
+
+    /* Left Panel: Slide List */
+    .slide-list { list-style: none; padding: 0; margin: 0; }
+    .slide-item { padding: 12px 20px; cursor: pointer; border-left: 4px solid transparent; transition: all 0.2s; font-weight: 500; }
+    .slide-item:hover { background-color: var(--slate-100); }
+    .slide-item.active { background-color: #eef7ff; border-left-color: var(--intelligent-teal); color: var(--primary-navy); font-weight: 700; }
+    
+    /* Center Panel: Main Content */
+    .slide-title { font-family: var(--font-headers); font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 16px; }
+    .content-section { margin-bottom: 24px; }
+    .section-title { font-size: 0.8rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--slate-200); padding-bottom: 4px; }
+    .slide-text, .slide-notes { font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; }
+
+    /* Right Panel: Issues */
+    .issue-item { border: 1px solid var(--slate-200); border-radius: 8px; margin-bottom: 12px; padding: 12px; }
+    .issue-header { font-weight: 700; margin-bottom: 8px; }
+    .issue-details { font-size: 0.9rem; color: var(--slate-700); }
+</style>
+
+<div class="workstation-grid">
+    <!-- Left Panel: Slide Navigator -->
+    <div class="panel">
+        <div class="panel-header">
+            <h3 class="panel-title">Slides</h3>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <ul id="slide-list" class="slide-list">
+                <!-- Slide items will be dynamically inserted here -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Center Panel: Slide Content -->
+    <div class="panel">
+        <div class="panel-body" id="main-content-panel">
+            <h2 id="slide-title" class="slide-title">Select a slide</h2>
+            <div id="slide-content-area" style="display: none;">
+                <div class="content-section">
+                    <h4 class="section-title">On-Screen Text</h4>
+                    <p id="slide-text" class="slide-text"></p>
+                </div>
+                <div class="content-section">
+                    <h4 class="section-title">Speaker Notes</h4>
+                    <p id="slide-notes" class="slide-notes"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel: AI Analysis & Issues -->
+    <div class="panel">
+        <div class="panel-header">
+            <h3 class="panel-title">AI Analysis</h3>
+        </div>
+        <div class="panel-body" id="issues-panel">
+            <!-- Issues will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // This script block contains all the logic to power the workstation
+    const auditData = {{ audit_data | tojson }};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const slideList = document.getElementById('slide-list');
+        const slideTitle = document.getElementById('slide-title');
+        const slideContentArea = document.getElementById('slide-content-area');
+        const slideText = document.getElementById('slide-text');
+        const slideNotes = document.getElementById('slide-notes');
+        const issuesPanel = document.getElementById('issues-panel');
+
+        function renderSlideList() {
+            auditData.slides.forEach((slide, index) => {
+                const li = document.createElement('li');
+                li.className = 'slide-item';
+                li.textContent = `Slide ${slide.slide_number}: ${slide.title || 'Untitled'}`;
+                li.dataset.slideIndex = index;
+                slideList.appendChild(li);
+            });
+        }
+
+        function renderSlideContent(index) {
+            const slide = auditData.slides[index];
+            const aiAnalysis = auditData.ai_analysis.find(a => a.slide_number === slide.slide_number);
+
+            // Update center panel
+            slideTitle.textContent = `Slide ${slide.slide_number}: ${slide.title || 'Untitled'}`;
+            slideText.textContent = slide.full_text || 'No on-screen text found.';
+            slideNotes.textContent = slide.notes || 'No speaker notes found.';
+            slideContentArea.style.display = 'block';
+
+            // Update right panel (issues)
+            issuesPanel.innerHTML = ''; // Clear previous issues
+            if (aiAnalysis) {
+                let issuesHtml = `
+                    <div class="issue-item">
+                        <div class="issue-header">Clarity Score</div>
+                        <div class="issue-details">${aiAnalysis.clarity_score || 'N/A'} / 10</div>
+                    </div>
+                    <div class="issue-item">
+                        <div class="issue-header">Tone Audit</div>
+                        <div class="issue-details">${aiAnalysis.tone_audit || 'N/A'}</div>
+                    </div>
+                `;
+                if (aiAnalysis.suggested_notes) {
+                    issuesHtml += `
+                    <div class="issue-item">
+                        <div class="issue-header">Suggested Notes</div>
+                        <div class="issue-details" style="white-space: pre-wrap;">${aiAnalysis.suggested_notes}</div>
+                    </div>
+                    `;
+                }
+                issuesPanel.innerHTML = issuesHtml;
+            } else {
+                issuesPanel.innerHTML = '<p>No AI analysis available for this slide.</p>';
+            }
+        }
+
+        slideList.addEventListener('click', function(e) {
+            if (e.target && e.target.matches('li.slide-item')) {
+                // Remove active class from all items
+                document.querySelectorAll('.slide-item').forEach(item => item.classList.remove('active'));
+                // Add active class to clicked item
+                e.target.classList.add('active');
+                
+                const slideIndex = e.target.dataset.slideIndex;
+                renderSlideContent(slideIndex);
+            }
+        });
+
+        // Initial render
+        renderSlideList();
+    });
+</script>
+{% endblock %}
