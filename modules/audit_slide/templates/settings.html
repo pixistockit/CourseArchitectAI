@@ -10,7 +10,7 @@
             <p class="page-subtitle">Configure global AI models, brand rules, and API credentials.</p>
         </div>
         <button type="submit" class="btn btn-primary">
-            <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
             <span>Save Settings</span>
         </button>
     </div>
@@ -20,92 +20,86 @@
         <div class="settings-card">
             <div class="settings-card-header">
                 <h3 class="settings-card-title">AI & LLM Configuration</h3>
-                <p class="settings-card-subtitle">Manage API keys and define the behavior of the AI analysis agents.</p>
+                <p class="settings-card-subtitle">Manage API keys and select models for each analysis agent.</p>
             </div>
             <div class="settings-card-body">
                 <div class="form-grid">
-                    <!-- Provider Selection -->
-                    <div class="form-group span-2">
-                        <label for="agent_1_provider">Agent 1: Content Analysis</label>
-                        <select id="agent_1_provider" name="agent_1_provider" class="form-select">
-                            <option value="gemini" {% if config.agent_1_provider == 'gemini' %}selected{% endif %}>Google Gemini</option>
-                            <option value="openai" {% if config.agent_1_provider == 'openai' %}selected{% endif %}>OpenAI GPT</option>
-                            <option value="anthropic" {% if config.agent_1_provider == 'anthropic' %}selected{% endif %}>Anthropic Claude</option>
-                            <option value="groq" {% if config.agent_1_provider == 'groq' %}selected{% endif %}>Groq</option>
-                        </select>
-                    </div>
-                     <div class="form-group span-2">
-                        <label for="agent_2_provider">Agent 2: Logic & Heuristics</label>
-                        <select id="agent_2_provider" name="agent_2_provider" class="form-select">
-                            <option value="gemini" {% if config.agent_2_provider == 'gemini' %}selected{% endif %}>Google Gemini</option>
-                            <option value="openai" {% if config.agent_2_provider == 'openai' %}selected{% endif %}>OpenAI GPT</option>
-                            <option value="anthropic" {% if config.agent_2_provider == 'anthropic' %}selected{% endif %}>Anthropic Claude</option>
-                            <option value="groq" {% if config.agent_2_provider == 'groq' %}selected{% endif %}>Groq</option>
-                        </select>
-                    </div>
-                    <!-- API Keys -->
-                    <div class="form-group">
-                        <label for="gemini_api_key">Gemini API Key</label>
-                        <input type="password" id="gemini_api_key" name="gemini_api_key" value="{{ config.gemini_api_key }}" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="openai_api_key">OpenAI API Key</label>
-                        <input type="password" id="openai_api_key" name="openai_api_key" value="{{ config.openai_api_key }}" class="form-input">
-                    </div>
-                     <div class="form-group">
-                        <label for="anthropic_api_key">Anthropic API Key</label>
-                        <input type="password" id="anthropic_api_key" name="anthropic_api_key" value="{{ config.anthropic_api_key }}" class="form-input">
-                    </div>
-                     <div class="form-group">
-                        <label for="groq_api_key">Groq API Key</label>
-                        <input type="password" id="groq_api_key" name="groq_api_key" value="{{ config.groq_api_key }}" class="form-input">
-                    </div>
-
-                    <!-- Blacklist -->
-                    <div class="form-group span-2">
-                         <label for="blacklist">Compliance Blacklist</label>
-                         <textarea id="blacklist" name="blacklist" class="form-textarea" rows="4" placeholder="Enter one term per line, e.g.,&#10;old_product_name: new_product_name&#10;forbidden_term">{{ config.blacklist_display }}</textarea>
-                    </div>
+                    <div class="form-group"><label for="agent_1_provider">Agent 1 (Manager)</label><select id="agent_1_provider" name="agent_1_provider" class="form-select">
+                        <option value="GEMINI" {% if config.agent_1_provider == 'GEMINI' %}selected{% endif %}>Google Gemini</option>
+                        <option value="OPENAI" {% if config.agent_1_provider == 'OPENAI' %}selected{% endif %}>OpenAI GPT</option>
+                        <option value="ANTHROPIC" {% if config.agent_1_provider == 'ANTHROPIC' %}selected{% endif %}>Anthropic Claude</option>
+                        <option value="GROQ" {% if config.agent_1_provider == 'GROQ' %}selected{% endif %}>Groq</option>
+                        <option value="MISTRALAI" {% if config.agent_1_provider == 'MISTRALAI' %}selected{% endif %}>Mistral</option>
+                        <option value="AWS_BEDROCK" {% if config.agent_1_provider == 'AWS_BEDROCK' %}selected{% endif %}>AWS Bedrock</option>
+                    </select></div>
+                    <div class="form-group"><label for="agent_2_provider">Agent 2 (Researcher)</label><select id="agent_2_provider" name="agent_2_provider" class="form-select">
+                        <option value="SAME_AS_AGENT_1" {% if not config.agent_2_provider or config.agent_2_provider == 'SAME_AS_AGENT_1' %}selected{% endif %}>Same as Agent 1</option>
+                        <option value="GEMINI" {% if config.agent_2_provider == 'GEMINI' %}selected{% endif %}>Google Gemini</option>
+                        <option value="OPENAI" {% if config.agent_2_provider == 'OPENAI' %}selected{% endif %}>OpenAI GPT</option>
+                        <option value="ANTHROPIC" {% if config.agent_2_provider == 'ANTHROPIC' %}selected{% endif %}>Anthropic Claude</option>
+                        <option value="GROQ" {% if config.agent_2_provider == 'GROQ' %}selected{% endif %}>Groq</option>
+                        <option value="MISTRALAI" {% if config.agent_2_provider == 'MISTRALAI' %}selected{% endif %}>Mistral</option>
+                        <option value="AWS_BEDROCK" {% if config.agent_2_provider == 'AWS_BEDROCK' %}selected{% endif %}>AWS Bedrock</option>
+                    </select></div>
+                    <div class="form-group"><label for="agent_3_provider">Agent 3 (Executor)</label><select id="agent_3_provider" name="agent_3_provider" class="form-select">
+                         <option value="SAME_AS_AGENT_1" {% if not config.agent_3_provider or config.agent_3_provider == 'SAME_AS_AGENT_1' %}selected{% endif %}>Same as Agent 1</option>
+                         <option value="GEMINI" {% if config.agent_3_provider == 'GEMINI' %}selected{% endif %}>Google Gemini</option>
+                         <option value="OPENAI" {% if config.agent_3_provider == 'OPENAI' %}selected{% endif %}>OpenAI GPT</option>
+                         <option value="ANTHROPIC" {% if config.agent_3_provider == 'ANTHROPIC' %}selected{% endif %}>Anthropic Claude</option>
+                         <option value="GROQ" {% if config.agent_3_provider == 'GROQ' %}selected{% endif %}>Groq</option>
+                         <option value="MISTRALAI" {% if config.agent_3_provider == 'MISTRALAI' %}selected{% endif %}>Mistral</option>
+                         <option value="AWS_BEDROCK" {% if config.agent_3_provider == 'AWS_BEDROCK' %}selected{% endif %}>AWS Bedrock</option>
+                    </select></div>
                 </div>
+                <div class="divider"></div>
+                <div class="form-grid">
+                    <div class="form-group"><label for="gemini_api_key">Gemini API Key</label><input type="password" id="gemini_api_key" name="gemini_api_key" value="{{ config.gemini_api_key }}" class="form-input"></div>
+                    <div class="form-group"><label for="openai_api_key">OpenAI API Key</label><input type="password" id="openai_api_key" name="openai_api_key" value="{{ config.openai_api_key }}" class="form-input"></div>
+                    <div class="form-group"><label for="anthropic_api_key">Anthropic API Key</label><input type="password" id="anthropic_api_key" name="anthropic_api_key" value="{{ config.anthropic_api_key }}" class="form-input"></div>
+                    <div class="form-group"><label for="groq_api_key">Groq API Key</label><input type="password" id="groq_api_key" name="groq_api_key" value="{{ config.groq_api_key }}" class="form-input"></div>
+                    <div class="form-group"><label for="mistral_api_key">Mistral API Key</label><input type="password" id="mistral_api_key" name="mistral_api_key" value="{{ config.mistral_api_key }}" class="form-input"></div>
+                </div>
+                 <div class="divider"></div>
+                 <div class="form-grid">
+                    <div class="form-group"><label for="aws_access_key">AWS Access Key</label><input type="password" id="aws_access_key" name="aws_access_key" value="{{ config.aws_access_key }}" class="form-input"></div>
+                    <div class="form-group"><label for="aws_secret_key">AWS Secret Key</label><input type="password" id="aws_secret_key" name="aws_secret_key" value="{{ config.aws_secret_key }}" class="form-input"></div>
+                    <div class="form-group"><label for="aws_region">AWS Region</label><input type="text" id="aws_region" name="aws_region" value="{{ config.aws_region }}" class="form-input" placeholder="e.g., us-east-1"></div>
+                 </div>
             </div>
         </div>
 
-        <!-- Brand Compliance Rules Card -->
+        <!-- Content & Compliance Card -->
         <div class="settings-card">
-            <div class="settings-card-header">
-                <h3 class="settings-card-title">Brand Compliance Rules</h3>
-                <p class="settings-card-subtitle">Set universal standards for fonts, colors, and content structure.</p>
-            </div>
+            <div class="settings-card-header"><h3 class="settings-card-title">Content & Compliance</h3><p class="settings-card-subtitle">Define rules for content quality, accessibility, and terminology.</p></div>
             <div class="settings-card-body">
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label for="title_font">Title Font</label>
-                        <input type="text" id="title_font" name="title_font" value="{{ brand_config.title_font }}" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="body_font">Body Font</label>
-                        <input type="text" id="body_font" name="body_font" value="{{ brand_config.body_font }}" class="form-input">
-                    </div>
-                    <div class="form-group span-2">
-                        <label for="allowed_fonts">Allowed Fonts (Comma-separated)</label>
-                        <input type="text" id="allowed_fonts" name="allowed_fonts" value="{{ brand_config.allowed_fonts|join(', ') }}" class="form-input">
-                    </div>
+                    <div class="form-group"><label for="default_grade">Target Reading Grade Level</label><input type="number" id="default_grade" name="default_grade" value="{{ config.default_grade }}" class="form-input"></div>
+                    <div class="form-group"><label for="max_words_per_slide">Max Words Per Slide</label><input type="number" id="max_words_per_slide" name="max_words_per_slide" value="{{ config.max_words_per_slide }}" class="form-input"></div>
+                    <div class="form-group"><label for="contrast_ratio">WCAG Contrast Ratio (AA)</label><input type="number" step="0.1" id="contrast_ratio" name="contrast_ratio" value="{{ config.contrast_ratio }}" class="form-input"></div>
+                    <div class="form-group"><label for="min_font_size">WCAG Minimum Font Size</label><input type="number" id="min_font_size" name="min_font_size" value="{{ config.min_font_size }}" class="form-input"></div>
+                </div>
+                 <div class="divider"></div>
+                <div class="form-toggle-row"><label for="check_spelling">Check Spelling</label><label class="toggle-switch"><input type="checkbox" id="check_spelling" name="check_spelling" {% if config.check_spelling == 'on' %}checked{% endif %}><span class="slider"></span></label></div>
+                <div class="form-toggle-row"><label for="check_grammar">Check Grammar</label><label class="toggle-switch"><input type="checkbox" id="check_grammar" name="check_grammar" {% if config.check_grammar == 'on' %}checked{% endif %}><span class="slider"></span></label></div>
+                <div class="divider"></div>
+                <div class="form-group"><label for="blacklist">Compliance Blacklist</label><textarea id="blacklist" name="blacklist" class="form-textarea" rows="4" placeholder="Enter one term per line, e.g.,&#10;old_product:new_product&#10;forbidden_term">{{ config.blacklist_display }}</textarea></div>
+            </div>
+        </div>
+
+        <!-- Brand & Exemption Rules Card -->
+        <div class="settings-card">
+            <div class="settings-card-header"><h3 class="settings-card-title">Brand & Exemption Rules</h3><p class="settings-card-subtitle">Set universal standards for fonts, headers, and slide-specific exemptions.</p></div>
+            <div class="settings-card-body">
+                <div class="form-grid">
+                    <div class="form-group"><label for="title_font">Required Title Font</label><input type="text" id="title_font" name="title_font" value="{{ brand_config.title_font }}" class="form-input"></div>
+                    <div class="form-group"><label for="body_font">Required Body Font</label><input type="text" id="body_font" name="body_font" value="{{ brand_config.body_font }}" class="form-input"></div>
+                    <div class="form-group span-2"><label for="allowed_fonts">Allowed Fonts (Comma-separated)</label><input type="text" id="allowed_fonts" name="allowed_fonts" value="{{ brand_config.allowed_fonts|join(', ') }}" class="form-input"></div>
+                    <div class="form-group span-2"><label for="required_headers">Required Headers (One per line)</label><textarea id="required_headers" name="required_headers" class="form-textarea" rows="3">{{ brand_config.required_headers|join('\n') }}</textarea></div>
                 </div>
                 <div class="divider"></div>
-                <div class="form-toggle-row">
-                    <label for="check_spelling">Check Spelling</label>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="check_spelling" name="check_spelling" {% if config.check_spelling == 'on' %}checked{% endif %}>
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-                <div class="form-toggle-row">
-                    <label for="check_grammar">Check Grammar</label>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="check_grammar" name="check_grammar" {% if config.check_grammar == 'on' %}checked{% endif %}>
-                        <span class="slider round"></span>
-                    </label>
-                </div>
+                 <div class="form-toggle-row"><label for="exempt_first_slide">Exempt First Slide</label><label class="toggle-switch"><input type="checkbox" id="exempt_first_slide" name="exempt_first_slide" {% if brand_config.exempt_first_slide %}checked{% endif %}><span class="slider"></span></label></div>
+                 <div class="form-toggle-row"><label for="exempt_last_slide">Exempt Last Slide</label><label class="toggle-switch"><input type="checkbox" id="exempt_last_slide" name="exempt_last_slide" {% if brand_config.exempt_last_slide %}checked{% endif %}><span class="slider"></span></label></div>
+                 <div class="form-group" style="margin-top:20px;"><label for="exempt_specific_slides">Exempt Specific Slides (Comma-separated)</label><input type="text" id="exempt_specific_slides" name="exempt_specific_slides" value="{{ brand_config.exempt_specific_slides }}" class="form-input" placeholder="e.g., 5, 12, 23"></div>
             </div>
         </div>
     </div>
@@ -132,16 +126,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 toast.textContent = 'Settings saved successfully!';
                 toast.className = 'toast show success';
             } else {
-                toast.textContent = 'Error: ' + data.message;
+                toast.textContent = 'Error: ' + (data.message || 'Could not save settings.');
                 toast.className = 'toast show error';
             }
-            setTimeout(() => {
-                toast.className = 'toast';
-            }, 3000);
         })
         .catch(error => {
-            toast.textContent = 'An unexpected error occurred.';
+            toast.textContent = 'An unexpected network error occurred.';
             toast.className = 'toast show error';
+        })
+        .finally(() => {
              setTimeout(() => {
                 toast.className = 'toast';
             }, 3000);
