@@ -3,14 +3,150 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">Platform Settings</h1>
-    <p class="page-subtitle">Configure global AI models, brand rules, and API credentials.</p>
-</div>
+<form id="settings-form" action="{{ url_for('save_settings') }}" method="POST">
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 class="page-title">Platform Settings</h1>
+            <p class="page-subtitle">Configure global AI models, brand rules, and API credentials.</p>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            <span>Save Settings</span>
+        </button>
+    </div>
 
-<!-- The settings form from the old file goes here, simplified for now. -->
-<!-- It will be restyled to match the new platform look. -->
-<p>The full settings form will be re-integrated and styled in a subsequent step. This will include sections for LLM Configuration, Brand Compliance Rules, and more.</p>
-<p>Current Title Font: <strong>{{ brand_config.title_font }}</strong></p>
-<p>Current Body Font: <strong>{{ brand_config.body_font }}</strong></p>
+    <div class="settings-container">
+        <!-- AI & LLM Configuration Card -->
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <h3 class="settings-card-title">AI & LLM Configuration</h3>
+                <p class="settings-card-subtitle">Manage API keys and define the behavior of the AI analysis agents.</p>
+            </div>
+            <div class="settings-card-body">
+                <div class="form-grid">
+                    <!-- Provider Selection -->
+                    <div class="form-group span-2">
+                        <label for="agent_1_provider">Agent 1: Content Analysis</label>
+                        <select id="agent_1_provider" name="agent_1_provider" class="form-select">
+                            <option value="gemini" {% if config.agent_1_provider == 'gemini' %}selected{% endif %}>Google Gemini</option>
+                            <option value="openai" {% if config.agent_1_provider == 'openai' %}selected{% endif %}>OpenAI GPT</option>
+                            <option value="anthropic" {% if config.agent_1_provider == 'anthropic' %}selected{% endif %}>Anthropic Claude</option>
+                            <option value="groq" {% if config.agent_1_provider == 'groq' %}selected{% endif %}>Groq</option>
+                        </select>
+                    </div>
+                     <div class="form-group span-2">
+                        <label for="agent_2_provider">Agent 2: Logic & Heuristics</label>
+                        <select id="agent_2_provider" name="agent_2_provider" class="form-select">
+                            <option value="gemini" {% if config.agent_2_provider == 'gemini' %}selected{% endif %}>Google Gemini</option>
+                            <option value="openai" {% if config.agent_2_provider == 'openai' %}selected{% endif %}>OpenAI GPT</option>
+                            <option value="anthropic" {% if config.agent_2_provider == 'anthropic' %}selected{% endif %}>Anthropic Claude</option>
+                            <option value="groq" {% if config.agent_2_provider == 'groq' %}selected{% endif %}>Groq</option>
+                        </select>
+                    </div>
+                    <!-- API Keys -->
+                    <div class="form-group">
+                        <label for="gemini_api_key">Gemini API Key</label>
+                        <input type="password" id="gemini_api_key" name="gemini_api_key" value="{{ config.gemini_api_key }}" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="openai_api_key">OpenAI API Key</label>
+                        <input type="password" id="openai_api_key" name="openai_api_key" value="{{ config.openai_api_key }}" class="form-input">
+                    </div>
+                     <div class="form-group">
+                        <label for="anthropic_api_key">Anthropic API Key</label>
+                        <input type="password" id="anthropic_api_key" name="anthropic_api_key" value="{{ config.anthropic_api_key }}" class="form-input">
+                    </div>
+                     <div class="form-group">
+                        <label for="groq_api_key">Groq API Key</label>
+                        <input type="password" id="groq_api_key" name="groq_api_key" value="{{ config.groq_api_key }}" class="form-input">
+                    </div>
+
+                    <!-- Blacklist -->
+                    <div class="form-group span-2">
+                         <label for="blacklist">Compliance Blacklist</label>
+                         <textarea id="blacklist" name="blacklist" class="form-textarea" rows="4" placeholder="Enter one term per line, e.g.,&#10;old_product_name: new_product_name&#10;forbidden_term">{{ config.blacklist_display }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Brand Compliance Rules Card -->
+        <div class="settings-card">
+            <div class="settings-card-header">
+                <h3 class="settings-card-title">Brand Compliance Rules</h3>
+                <p class="settings-card-subtitle">Set universal standards for fonts, colors, and content structure.</p>
+            </div>
+            <div class="settings-card-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="title_font">Title Font</label>
+                        <input type="text" id="title_font" name="title_font" value="{{ brand_config.title_font }}" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="body_font">Body Font</label>
+                        <input type="text" id="body_font" name="body_font" value="{{ brand_config.body_font }}" class="form-input">
+                    </div>
+                    <div class="form-group span-2">
+                        <label for="allowed_fonts">Allowed Fonts (Comma-separated)</label>
+                        <input type="text" id="allowed_fonts" name="allowed_fonts" value="{{ brand_config.allowed_fonts|join(', ') }}" class="form-input">
+                    </div>
+                </div>
+                <div class="divider"></div>
+                <div class="form-toggle-row">
+                    <label for="check_spelling">Check Spelling</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="check_spelling" name="check_spelling" {% if config.check_spelling == 'on' %}checked{% endif %}>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="form-toggle-row">
+                    <label for="check_grammar">Check Grammar</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="check_grammar" name="check_grammar" {% if config.check_grammar == 'on' %}checked{% endif %}>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+<div id="toast-notification" class="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('settings-form');
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const toast = document.getElementById('toast-notification');
+
+        fetch("{{ url_for('save_settings') }}", {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                toast.textContent = 'Settings saved successfully!';
+                toast.className = 'toast show success';
+            } else {
+                toast.textContent = 'Error: ' + data.message;
+                toast.className = 'toast show error';
+            }
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        })
+        .catch(error => {
+            toast.textContent = 'An unexpected error occurred.';
+            toast.className = 'toast show error';
+             setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        });
+    });
+});
+</script>
 {% endblock %}
