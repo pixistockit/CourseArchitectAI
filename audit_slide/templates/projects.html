@@ -1,160 +1,35 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuditSlide AI - All Projects</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root { --navy: #0A2342; --teal: #005F73; --amber: #E9B44C; --green: #2A9D8F; --bg: #F4F6F8; --white: #FFFFFF; --border: #E1E4E8; --text-main: #1A1A1A; --text-muted: #64748B; }
-        body { font-family: 'Inter', sans-serif; font-size: 16px; background: var(--bg); margin: 0; display: flex; height: 100vh; color: var(--text-main); line-height: 1.6; }
-        h1, h2, h3, .brand, .btn-new, .score-badge { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .sidebar { width: 260px; background: var(--navy); color: white; display: flex; flex-direction: column; padding: 24px; flex-shrink: 0; }
-        .brand { font-size: 1.4rem; font-weight: 800; margin-bottom: 48px; display: flex; align-items: center; gap: 12px; letter-spacing: -0.5px; }
-        .nav-item { padding: 12px 16px; color: rgba(255,255,255,0.75); text-decoration: none; border-radius: 8px; margin-bottom: 4px; transition: 0.2s; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 0.95rem; }
-        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; }
-        .nav-item.btn-new { background: var(--teal); color: white; margin-top: 24px; justify-content: center; font-weight: 600; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 14px; }
-        .main { flex: 1; overflow-y: auto; padding: 40px 48px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; }
-        .page-title { margin: 0; font-size: 1.6rem; font-weight: 800; color: var(--navy); letter-spacing: -0.5px; }
-        .search-bar { padding: 12px 16px; border: 1px solid #ccc; border-radius: 8px; width: 320px; font-family: 'Inter', sans-serif; font-size: 0.95rem; }
-        .project-group { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); margin-bottom: 24px; overflow: hidden; border: 1px solid var(--border); }
-        .group-header { padding: 18px 24px; background: #FAFAFA; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; transition: background 0.2s; }
-        .group-header:hover { background: #F0F2F5; }
-        .header-left { display: flex; align-items: center; gap: 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; color: var(--navy); font-size: 1.1rem; }
-        .header-meta { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 0.9rem; color: var(--text-muted); margin-left: 8px; }
-        .fa-chevron-down { transition: transform 0.3s; font-size: 0.8rem; }
-        .project-group.collapsed .fa-chevron-down { transform: rotate(-90deg); }
-        .project-group.collapsed .group-content { display: none; }
-        .project-group.collapsed { border-bottom: 1px solid transparent; } 
-        .group-content { border-top: 1px solid var(--border); }
-        .file-row { display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border); transition: 0.1s; background: white; gap: 20px; }
-        .file-row:last-child { border-bottom: none; }
-        .file-row:hover { background: #F8F9FA; }
-        .col-icon { width: 40px; font-size: 1.4rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; }
-        .col-details { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; }
-        .col-name { font-weight: 600; color: var(--text-main); font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .col-date { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; }
-        .col-score { width: 80px; text-align: right;}
-        .score-badge { padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; min-width: 40px; text-align: center; }
-        .score-good { background: #E0F2F1; color: var(--green); }
-        .score-bad { background: #FFF8E1; color: var(--amber); }
-        .col-actions { display: flex; gap: 8px; justify-content: flex-end; width: 160px; }
-        .action-btn { border: 1px solid var(--border); background: white; color: var(--text-muted); width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .action-btn:hover { border-color: var(--navy); color: var(--navy); background: #F4F6F8; }
-        .btn-del:hover { border-color: #D32F2F; color: #D32F2F; background: #FFEBEE; }
-        .btn-folder-del { background: transparent; border: 1px solid transparent; color: #999; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; transition: 0.2s; font-family: 'Inter', sans-serif; font-weight: 500; }
-        .btn-folder-del:hover { color: #D32F2F; background: rgba(211, 47, 47, 0.05); }
-    </style>
-</head>
-<body>
+{% extends 'layout.html' %}
 
-<div class="sidebar">
-    <div class="brand"><i class="fas fa-layer-group" style="color: var(--teal);"></i> AuditSlide AI</div>
-    <a href="/" class="nav-item"><i class="fas fa-th-large"></i> Dashboard</a>
-    <a href="/projects" class="nav-item active"><i class="fas fa-folder"></i> All Projects</a>
-    <a href="/settings" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
-    <a href="/new-audit" class="nav-item btn-new"><i class="fas fa-plus"></i> New Audit</a>
+{% block title %}Projects{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Audit Projects</h1>
+    <p class="page-subtitle">Manage, review, and initiate all forensic compliance audits.</p>
 </div>
 
-<div class="main">
-    <div class="header">
-        <div>
-            <h1 class="page-title">All Projects</h1>
-            <p style="color: var(--text-muted); margin-top:8px; font-weight: 400;">Manage and organize your audits.</p>
-        </div>
-        <input type="text" class="search-bar" placeholder="Search projects..." onkeyup="filterProjects(this.value)">
-    </div>
-
-    {% if not projects %}
-        <div style="text-align:center; padding:100px; color: var(--text-muted);">
-            <div style="background: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                <i class="fas fa-folder-open" style="font-size:2.5rem; color: var(--teal);"></i>
-            </div>
-            <h3 style="color: var(--navy); margin-bottom: 8px;">No projects found</h3>
-            <p>Click "New Audit" to analyze your first presentation.</p>
-        </div>
+<!-- The project listing logic from the old file goes here, but simplified. -->
+<!-- This will be styled and enhanced later. -->
+<div>
+    <h2>Project Groups</h2>
+    {% if projects %}
+        <ul>
+        {% for group_name, files in projects.items() %}
+            <li>
+                <strong>{{ group_name }}</strong>
+                <ul>
+                    {% for file in files %}
+                    <li>
+                        {{ file.filename }} (Score: {{ file.score }}%) - 
+                        <a href="{{ url_for('view_workstation', report_id=file.id) }}">View Workstation</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No audit projects found. Upload a presentation to begin.</p>
     {% endif %}
-
-    {% for project_name, files in projects.items() %}
-    <div class="project-group" id="group-{{ loop.index }}">
-        <div class="group-header" onclick="toggleGroup(this)">
-            <div class="header-left">
-                <i class="fas fa-chevron-down"></i>
-                <i class="fas fa-folder" style="color: var(--amber);"></i> 
-                {{ project_name }}
-                <span class="header-meta">({{ files|length }} files)</span>
-            </div>
-            
-            <div style="display:flex; gap:10px;">
-                <button class="btn-folder-del" style="color:var(--teal);" title="Add New Audit to this Folder" onclick="addAuditToFolder(event, '{{ project_name }}')">
-                    <i class="fas fa-plus-circle"></i> Add File
-                </button>
-                <button class="btn-folder-del" title="Delete Entire Project Folder" onclick="deleteProjectGroup(event, '{{ project_name }}')">
-                    <i class="fas fa-trash-alt"></i> Delete Folder
-                </button>
-            </div>
-        </div>
-
-        <div class="group-content">
-            {% for file in files %}
-            <div class="file-row">
-                <div class="col-icon"><i class="far fa-file-powerpoint" style="color:#C43E1C;"></i></div>
-                <div class="col-details">
-                    <div class="col-name">{{ file.filename }}</div>
-                    <div class="col-date">{{ file.date }}</div>
-                </div>
-                <div class="col-score">
-                    <span class="score-badge {{ 'score-good' if file.score >= 80 else 'score-bad' }}">
-                        {{ file.score }}%
-                    </span>
-                </div>
-                <div class="col-actions">
-                    <button class="action-btn" title="View Executive Summary" onclick="window.open('/view-report/{{ file.id }}')"><i class="fas fa-chart-bar"></i></button>
-                    <button class="action-btn" title="Open ID Workstation" onclick="window.open('/view-workstation/{{ file.id }}')"><i class="fas fa-desktop"></i></button>
-                    <button class="action-btn" title="Print to PDF" onclick="printReport('{{ file.id }}')"><i class="fas fa-file-pdf"></i></button>
-                    <button class="action-btn btn-del" title="Delete File" onclick="deleteFile('{{ file.id }}')"><i class="fas fa-trash-alt"></i></button>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endfor %}
 </div>
-
-<script>
-    function toggleGroup(header) { header.parentElement.classList.toggle('collapsed'); }
-    function deleteFile(sessionId) {
-        if(confirm("⚠️ Are you sure?")) {
-            fetch(`/delete/${sessionId}`, { method: 'POST' }).then(res => res.json()).then(data => { if(data.status === 'deleted') location.reload(); });
-        }
-    }
-    function deleteProjectGroup(event, projectName) {
-        event.stopPropagation();
-        if(confirm(`⚠️ Delete folder "${projectName}" and ALL files?`)) {
-            fetch('/delete-project-group', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ project_name: projectName })
-            }).then(() => location.reload());
-        }
-    }
-    function printReport(sessionId) { window.open(`/view-report/${sessionId}?print=true`, '_blank'); }
-    function filterProjects(text) {
-        const val = text.toLowerCase();
-        document.querySelectorAll('.file-row').forEach(row => {
-            const name = row.querySelector('.col-name').innerText.toLowerCase();
-            const group = row.closest('.project-group');
-            if(name.includes(val)) { row.style.display = 'flex'; group.classList.remove('collapsed'); } 
-            else { row.style.display = 'none'; }
-        });
-    }
-    function addAuditToFolder(event, projectName) {
-        event.stopPropagation(); window.location.href = `/new-audit?project=${encodeURIComponent(projectName)}`;
-    }    
-</script>
-</body>
-</html>
+{% endblock %}
