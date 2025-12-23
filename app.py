@@ -4,6 +4,7 @@ import os
 import uuid
 import json
 import shutil
+import re
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 
@@ -18,7 +19,6 @@ import modules.audit_slide.config as CFG
 
 # --- CONFIGURATION ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# --- MODIFIED: Update the template path to the new module location ---
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'modules', 'audit_slide', 'templates')
 UPLOAD_FOLDER = 'data/uploads'
 OUTPUT_FOLDER = 'data/reports'
@@ -35,7 +35,6 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
 logger_service = LoggerService(base_data_path='data')
 
-# --- (The rest of the file remains exactly the same as the previous version) ---
 
 # --- SMART CACHING HELPER ---
 def get_or_create_cached_report(report_id, template_name, output_filename):
@@ -76,8 +75,46 @@ def get_or_create_cached_report(report_id, template_name, output_filename):
 
 @app.route('/')
 def index():
+    """
+    Serves the Master Admin Dashboard with dynamic data.
+    """
     logger_service.log_system('info', 'Admin dashboard accessed', ip=request.remote_addr)
-    return render_template('dashboard.html', active_page='dashboard')
+
+    # --- NEW: Fetch and parse system logs for the dashboard ---
+    system_logs = []
+    log_file_path = os.path.join('data', 'logs', 'platform_system.log')
+    try:
+        if os.path.exists(log_file_path):
+            with open(log_file_path, 'r') as f:
+                # Read last 100 lines to ensure we get 10 valid entries
+                lines = f.readlines()[-100:]
+            
+            # Parse lines in reverse to get the most recent ones first
+            for line in reversed(lines):
+                if len(system_logs) >= 10:
+                    break
+                # Example format: 2025-12-25 14:30:00,123 - INFO - User: admin - IP: 127.0.0.1 - Admin dashboard accessed
+                match = re.match(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+ - (\w+) - User: .* - IP: ([\d\.a-fA-F:]+) - (.*)", line)
+                if match:
+                    system_logs.append({
+                        'timestamp': match.group(1).split(' ')[1], # Just the time
+                        'level': match.group(2),
+                        'ip': match.group(3),
+                        'message': match.group(4).strip()
+                    })
+    except Exception as e:
+        logger_service.log_system('error', f"Failed to read or parse system log for dashboard: {e}")
+
+    # Dummy KPI data (can be replaced with real database queries later)
+    kpi_data = {
+        'total_audits': 152,
+        'avg_compliance_score': 88.4,
+        'tokens_consumed_monthly': 784230,
+        'active_users': 12
+    }
+
+    return render_template('dashboard.html', active_page='dashboard', kpis=kpi_data, system_logs=system_logs)
+
 
 @app.route('/projects')
 def projects_page():
@@ -109,6 +146,7 @@ def projects_page():
     for p in projects: projects[p].sort(key=lambda x: x['date'], reverse=True)
     return render_template('projects.html', projects=projects, active_page='projects')
 
+# ... (rest of the file remains the same) ...
 @app.route('/upload', methods=['POST'])
 def upload_file():
     ip_addr = request.remote_addr
@@ -228,7 +266,6 @@ def settings():
             
     logger_service.log_system('info', "Settings page accessed", ip=request.remote_addr)
     return render_template('settings.html', config=llm_config, brand_config=brand_config, active_page='settings')
-
 @app.route('/save-settings', methods=['POST'])
 def save_settings():
     ip_addr = request.remote_addr
