@@ -24,7 +24,7 @@ from groq import Groq
 from mistralai.client import MistralClient
 import boto3
 
-# --- CORRECTED RELATIVE IMPORTS ---
+# --- RELATIVE IMPORTS ---
 from . import config as CFG
 from .prompts import get_batch_manager_prompt, get_batch_executor_prompt, get_research_query_prompt
 
@@ -32,12 +32,12 @@ from .prompts import get_batch_manager_prompt, get_batch_executor_prompt, get_re
 sys_logger = logging.getLogger('platform_system')
 ai_logger = logging.getLogger('audit_tool')
 
-# --- MASTER MODEL CONFIGURATION (PRESERVED) ---
+# --- MASTER MODEL CONFIGURATION ---
 MODEL_MAPPING = {
     "AGENT_1": {
         "ANTHROPIC": "claude-3-sonnet-20240229",
         "AWS_BEDROCK": "anthropic.claude-3-haiku-20240307-v1:0",
-        "GEMINI": "gemini-2.5-flash-lite", 
+        "GEMINI": "gemini-2.0-flash-lite", 
         "GROQ": "openai/gpt-oss-20b",
         "MISTRALAI": "mistral-small-latest",
         "OPENAI": "gpt-5-nano"
@@ -45,7 +45,7 @@ MODEL_MAPPING = {
     "AGENT_2": {
         "ANTHROPIC": None,
         "AWS_BEDROCK": "anthropic.claude-3-sonnet-20240229-v1:0",
-        "GEMINI": "gemini-2.5-flash",
+        "GEMINI": "gemini-2.0-flash",
         "GROQ": "llama-3.3-70b-versatile",
         "MISTRALAI": "magistral-small-latest",
         "OPENAI": "gpt-4.1-mini"
@@ -53,7 +53,7 @@ MODEL_MAPPING = {
     "AGENT_3": {
         "ANTHROPIC": None,
         "AWS_BEDROCK": "amazon.nova-pro-v1:0",
-        "GEMINI": "gemini-2.5-flash",
+        "GEMINI": "gemini-2.0-flash",
         "GROQ": "llama-3.3-70b-versatile",
         "MISTRALAI": "magistral-medium-latest",
         "OPENAI": "gpt-5"
@@ -150,9 +150,57 @@ class AIEngine:
             selected = self.config.get("agent_1_provider", "GEMINI")
         return selected
     
+    # --- VECTOR DATABASE LOOKUP (RESTORED) ---
     def query_vector_db(self, query_text):
-        ai_logger.info("AGENT_2: Skipping Vector DB lookup (using placeholder).")
-        return "Standard Best Practice: Maintain clarity and use multimedia principles effectively."
+        # 1. Credentials
+        account_id = str(getattr(CFG, 'cf_account_id', "")).strip()
+        v_token = str(getattr(CFG, 'cf_vectorize_token', "")).strip()
+        ai_token = str(getattr(CFG, 'cf_workers_ai_token', "")).strip()
+        index_name = getattr(CFG, 'cf_index_name', "instructional-cadence-kb")
+
+        # 2. Safety Check
+        if not isinstance(query_text, str):
+            ai_logger.warning(f"Vector DB received non-string query: {type(query_text)}. Converting.")
+            query_text = str(query_text)
+
+        if not all([account_id, v_token, ai_token]):
+            ai_logger.info("AGENT_2: Credentials missing. Skipping DB.")
+            return "Standard Best Practice: Maintain clarity."
+
+        try:
+            ai_logger.info(f"AGENT_2: Embedding query...")
+            
+            # 3. Generate Embedding
+            emb_url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/baai/bge-small-en-v1.5"
+            emb_res = requests.post(emb_url, headers={"Authorization": f"Bearer {ai_token}"}, json={"text": [query_text]})
+            
+            if emb_res.status_code != 200: 
+                ai_logger.error(f"Vector DB Embedding Error: {emb_res.text}")
+                return "Vector DB Error: Embedding failed."
+            
+            vector = emb_res.json()['result']['data'][0]
+
+            # 4. Query Index
+            query_url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/vectorize/indexes/{index_name}/query"
+            query_res = requests.post(query_url, headers={"Authorization": f"Bearer {v_token}"}, json={"vector": vector, "topK": 2, "returnMetadata": True})
+            
+            if query_res.status_code != 200:
+                ai_logger.error(f"Vector DB Query Error: {query_res.text}")
+                return "Vector DB Query Failed."
+
+            # 5. Extract Matches
+            matches = query_res.json().get('result', {}).get('matches', [])
+            if not matches: 
+                ai_logger.info("AGENT_2: No matches found in DB.")
+                return "No KB matches found."
+
+            context = "\n".join([m.get('metadata', {}).get('text', '') for m in matches if m.get('metadata')])
+            ai_logger.info(f"AGENT_2 SUCCESS: Retrieved {len(matches)} nodes.")
+            return context
+
+        except Exception as e:
+            ai_logger.error(f"AGENT_2 FAILURE: {e}")
+            return "Standard Best Practice."
 
     def analyze_batch(self, slides_list, total_slide_count=0):
         if not slides_list: return []
@@ -212,6 +260,33 @@ class AIEngine:
                 active_slides.append(s)
         return active_slides, skipped_results
 
+    # --- HELPER: SAFE TEXT EXTRACTION ---
+    def safe_extract_text(self, data):
+        """Recursively extracts string content from Mistral/Complex response objects."""
+        text_content = ""
+        
+        if isinstance(data, str): return data
+        
+        if isinstance(data, list):
+            for item in data: text_content += self.safe_extract_text(item)
+        
+        elif hasattr(data, 'text') and isinstance(data.text, str): return data.text
+            
+        elif isinstance(data, dict):
+            if 'text' in data and isinstance(data['text'], str): return data['text']
+            # Mistral specific 'thinking' block bypass
+            if 'thinking' in data: return "" 
+            for value in data.values(): text_content += self.safe_extract_text(value)
+
+        elif not isinstance(data, (int, float, bool, type(None))):
+            for attr in ['text', 'content']:
+                if hasattr(data, attr):
+                    attr_value = getattr(data, attr)
+                    if isinstance(attr_value, str): text_content += attr_value
+                    elif isinstance(attr_value, (list, dict)): text_content += self.safe_extract_text(attr_value)
+
+        return text_content
+
     def execute_agent(self, agent_role, prompt, system_instruction=None):
         provider = self.determine_provider(agent_role)
         client = self.get_client(provider)
@@ -223,7 +298,6 @@ class AIEngine:
         start_time = time.time(); in_tokens, out_tokens = 0, 0; response_text = ""
         try:
             if provider == "GEMINI":
-                # FIXED: Correct generation method for standard SDK
                 model = client.GenerativeModel(model_name)
                 full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
                 res = model.generate_content(full_prompt)
