@@ -37,7 +37,7 @@ MODEL_MAPPING = {
     "AGENT_1": {
         "ANTHROPIC": "claude-3-sonnet-20240229",
         "AWS_BEDROCK": "anthropic.claude-3-haiku-20240307-v1:0",
-        "GEMINI": "gemini-2.0-flash-lite", 
+        "GEMINI": "gemini-2.5-flash-lite", 
         "GROQ": "openai/gpt-oss-20b",
         "MISTRALAI": "mistral-small-latest",
         "OPENAI": "gpt-5-nano"
@@ -45,7 +45,7 @@ MODEL_MAPPING = {
     "AGENT_2": {
         "ANTHROPIC": None,
         "AWS_BEDROCK": "anthropic.claude-3-sonnet-20240229-v1:0",
-        "GEMINI": "gemini-2.0-flash",
+        "GEMINI": "gemini-2.5-flash",
         "GROQ": "llama-3.3-70b-versatile",
         "MISTRALAI": "magistral-small-latest",
         "OPENAI": "gpt-4.1-mini"
@@ -53,7 +53,7 @@ MODEL_MAPPING = {
     "AGENT_3": {
         "ANTHROPIC": None,
         "AWS_BEDROCK": "amazon.nova-pro-v1:0",
-        "GEMINI": "gemini-2.0-flash",
+        "GEMINI": "gemini-2.5-flash",
         "GROQ": "llama-3.3-70b-versatile",
         "MISTRALAI": "magistral-medium-latest",
         "OPENAI": "gpt-5"
