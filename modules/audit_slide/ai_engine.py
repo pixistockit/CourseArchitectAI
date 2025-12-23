@@ -14,7 +14,7 @@ import google.genai as genai
 from openai import OpenAI
 import anthropic
 from groq import Groq
-from mistralai.client import MistralClient # Corrected import for mistralai
+from mistralai.client import MistralClient
 import boto3
 
 # --- CORRECTED RELATIVE IMPORTS ---
@@ -22,35 +22,34 @@ from . import config as CFG
 from .prompts import get_batch_manager_prompt, get_batch_executor_prompt, get_research_query_prompt
 
 # --- LOGGING SETUP ---
-# Use the main app's logger for consistency, but define placeholders if run standalone
 sys_logger = logging.getLogger('platform_system')
 ai_logger = logging.getLogger('audit_tool')
 
-# --- MASTER MODEL CONFIGURATION ---
+# --- MASTER MODEL CONFIGURATION (USER SPECIFIED) ---
 MODEL_MAPPING = {
     "AGENT_1": {
         "ANTHROPIC": "claude-3-sonnet-20240229",
         "AWS_BEDROCK": "anthropic.claude-3-haiku-20240307-v1:0",
-        "GEMINI": "gemini-1.5-flash", 
-        "GROQ": "llama3-8b-8192",
+        "GEMINI": "gemini-2.5-flash-lite", 
+        "GROQ": "openai/gpt-oss-20b",
         "MISTRALAI": "mistral-small-latest",
-        "OPENAI": "gpt-4o-mini"
+        "OPENAI": "gpt-5-nano"
     },
     "AGENT_2": {
-        "ANTHROPIC": "claude-3-haiku-20240307",
+        "ANTHROPIC": None,
         "AWS_BEDROCK": "anthropic.claude-3-sonnet-20240229-v1:0",
-        "GEMINI": "gemini-1.5-flash",
-        "GROQ": "llama3-70b-8192",
-        "MISTRALAI": "mistral-large-latest",
-        "OPENAI": "gpt-4-turbo"
+        "GEMINI": "gemini-2.5-flash",
+        "GROQ": "llama-3.3-70b-versatile",
+        "MISTRALAI": "magistral-small-latest",
+        "OPENAI": "gpt-4.1-mini"
     },
     "AGENT_3": {
-        "ANTHROPIC": "claude-3-sonnet-20240229",
-        "AWS_BEDROCK": "anthropic.claude-3-sonnet-20240229-v1:0",
-        "GEMINI": "gemini-1.5-pro-latest",
-        "GROQ": "llama3-70b-8192",
-        "MISTRALAI": "mistral-large-latest",
-        "OPENAI": "gpt-4o"
+        "ANTHROPIC": None,
+        "AWS_BEDROCK": "amazon.nova-pro-v1:0",
+        "GEMINI": "gemini-2.5-flash",
+        "GROQ": "llama-3.3-70b-versatile",
+        "MISTRALAI": "magistral-medium-latest",
+        "OPENAI": "gpt-5"
     }
 }
 
@@ -81,7 +80,6 @@ class AIEngine:
         self.ai_context_prompt = self._load_context_file()
 
     def _load_configs(self):
-        # Corrected paths to be relative to the project root where app.py runs
         llm_cfg_path = os.path.join('data', 'config', 'llm_config.json')
         brand_cfg_path = os.path.join('data', 'config', 'brand_config.json')
         
@@ -96,47 +94,50 @@ class AIEngine:
         return llm_cfg, brand_cfg
 
     def _load_context_file(self):
-        # Corrected path to be relative to the project root
         ctx_path = os.path.join('modules', 'audit_slide', 'assets', 'system_instruction.txt')
         if os.path.exists(ctx_path):
             try:
                 with open(ctx_path, 'r') as f: return f.read().strip()
             except Exception as e: sys_logger.error(f"Failed to load system_instruction.txt: {e}")
-        return "You are an Instructional Design Auditor. Analyze content for clarity, brevity, and impact."
+        return "You are an Instructional Design Auditor."
 
     def get_client(self, provider):
         if provider in self.clients: return self.clients[provider]
         try:
+            client = None
             if provider == "GEMINI":
                 genai.configure(api_key=self.config.get('gemini_api_key'))
-                self.clients[provider] = genai
-                return genai
+                client = genai
             elif provider == "OPENAI":
-                return OpenAI(api_key=self.config.get('openai_api_key'))
+                client = OpenAI(api_key=self.config.get('openai_api_key'))
             elif provider == "ANTHROPIC":
-                return anthropic.Anthropic(api_key=self.config.get('anthropic_api_key'))
+                client = anthropic.Anthropic(api_key=self.config.get('anthropic_api_key'))
             elif provider == "GROQ":
-                return Groq(api_key=self.config.get('groq_api_key'))
+                client = Groq(api_key=self.config.get('groq_api_key'))
             elif provider == "MISTRALAI":
-                return MistralClient(api_key=self.config.get('mistral_api_key')) # Use MistralClient
+                client = MistralClient(api_key=self.config.get('mistral_api_key'))
             elif provider == "AWS_BEDROCK":
-                return boto3.client('bedrock-runtime', 
+                client = boto3.client('bedrock-runtime', 
                                     aws_access_key_id=self.config.get('aws_access_key'), 
                                     aws_secret_access_key=self.config.get('aws_secret_key'), 
                                     region_name=self.config.get('aws_region', 'us-east-1'))
+            if client:
+                self.clients[provider] = client
+                return client
         except Exception as e:
             sys_logger.error(f"Provider {provider} init failed: {e}")
         return None
 
     def determine_provider(self, agent_role):
-        config_key = f"agent_{agent_role.split('_')[-1].lower()}_provider"
-        selected = self.config.get(config_key, "GEMINI")
+        config_key = f"{agent_role.lower()}_provider"
+        selected = self.config.get(config_key, "SAME_AS_AGENT_1")
+        if selected == "SAME_AS_AGENT_1":
+            selected = self.config.get("agent_1_provider", "GEMINI")
         return selected
-
+    
     def query_vector_db(self, query_text):
-        # This function seems to have hardcoded values, which is fine for now.
-        # It will be executed as is.
-        return "Standard Best Practice: Maintain clarity." # Placeholder until credentials are confirmed
+        ai_logger.info("AGENT_2: Skipping Vector DB lookup (using placeholder).")
+        return "Standard Best Practice: Maintain clarity and use multimedia principles effectively."
 
     def analyze_batch(self, slides_list, total_slide_count=0):
         if not slides_list: return []
@@ -178,14 +179,15 @@ class AIEngine:
         exempt_first = self.brand_config.get('exempt_first_slide', False)
         exempt_last = self.brand_config.get('exempt_last_slide', False)
         specific_raw = self.brand_config.get('exempt_specific_slides', "")
-        exempt_specific = [int(x.strip()) for x in str(specific_raw).split(',') if x.strip().isdigit()]
+        exempt_specific = [int(x.strip()) for x in str(specific_raw).split(',') if x.strip().isdigit()] if specific_raw else []
 
         for s in slides_list:
             s_num = s.get('slide_number')
             if (exempt_first and s_num == 1) or \
-               (exempt_last and s_num == total_slide_count) or \
+               (exempt_last and total_slide_count > 0 and s_num == total_slide_count) or \
                (s_num in exempt_specific):
-                skipped_results.append({"slide_number": s_num, "clarity_score": "N/A", "tone_audit": "Exempt"})
+                ai_logger.info(f"Skipping Slide {s_num} (Exempt Rule)")
+                skipped_results.append({"slide_number": s_num, "clarity_score": "N/A", "tone_audit": "Slide marked as Exempt in settings."})
             else:
                 active_slides.append(s)
         return active_slides, skipped_results
@@ -195,10 +197,12 @@ class AIEngine:
         client = self.get_client(provider)
         model_name = MODEL_MAPPING.get(agent_role, {}).get(provider)
         
-        if not client or not model_name: return f"Error: Provider {provider} Missing"
+        if not client or not model_name: 
+            return f"Error: Provider {provider} Missing or Failed to Init"
 
         start_time = time.time(); in_tokens, out_tokens = 0, 0; response_text = ""
         try:
+            # This logic block dispatches the request to the correct provider SDK
             if provider == "GEMINI":
                 model = client.GenerativeModel(model_name)
                 full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
@@ -207,11 +211,30 @@ class AIEngine:
                 if hasattr(res, 'usage_metadata'):
                     in_tokens = res.usage_metadata.prompt_token_count
                     out_tokens = res.usage_metadata.candidates_token_count
-            # ... (other provider logic from your original file)
-            # For brevity, this is a summary. The full logic is included.
-            
-            self.tracker.log_usage(agent_role, provider, model_name, in_tokens, out_tokens, time.time() - start_time)
+            elif provider == "MISTRALAI":
+                msgs = [{"role": "user", "content": prompt}]
+                if system_instruction: msgs.insert(0, {"role": "system", "content": system_instruction})
+                res = client.chat(model=model_name, messages=msgs)
+                response_text = res.choices[0].message.content
+                if hasattr(res, 'usage'): in_tokens, out_tokens = res.usage.prompt_tokens, res.usage.completion_tokens
+            elif provider in ["OPENAI", "GROQ"]:
+                msgs = [{"role": "user", "content": prompt}]
+                if system_instruction: msgs.insert(0, {"role": "system", "content": system_instruction})
+                res = client.chat.completions.create(model=model_name, messages=msgs)
+                response_text = res.choices[0].message.content
+                if hasattr(res, 'usage'): in_tokens, out_tokens = res.usage.prompt_tokens, res.usage.completion_tokens
+            elif provider == "ANTHROPIC":
+                res = client.messages.create(model=model_name, max_tokens=4096, system=system_instruction or "", messages=[{"role": "user", "content": prompt}])
+                response_text = res.content[0].text
+                if hasattr(res, 'usage'): in_tokens, out_tokens = res.usage.input_tokens, res.usage.output_tokens
+            elif provider == "AWS_BEDROCK":
+                body = json.dumps({"prompt": f"\n\nHuman: {system_instruction}\n{prompt}\n\nAssistant:", "max_tokens_to_sample": 4096})
+                res = client.invoke_model(body=body, modelId=model_name)
+                response_text = json.loads(res.get('body').read())['completion']
+
+            self.tracker.log_usage(agent_role, provider, model_name, in_tokens, out_tokens, time.time() - start_time, "SUCCESS")
             return response_text
+
         except Exception as e:
             sys_logger.error(f"CRITICAL: Agent {agent_role} crash on {provider}: {e}")
             self.tracker.log_usage(agent_role, provider, model_name, 0, 0, time.time() - start_time, "ERROR")
