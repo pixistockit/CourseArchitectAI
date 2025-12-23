@@ -4,12 +4,23 @@
 
 {% block content %}
 <style>
-    /* --- WORKSTATION SPECIFIC STYLES --- */
-    .workstation-container { display: flex; height: calc(100vh - 80px); gap: 0; }
+    /* --- FORCE FULLSCREEN WORKSTATION (ZEN MODE) --- */
+    /* Hide global sidebar and header when in workstation mode */
+    .sidebar, .toggle-sidebar-btn, #sidebar-floater { display: none !important; }
+    .main-content { padding: 0 !important; overflow: hidden; height: 100vh; }
+    
+    /* WORKSTATION LAYOUT */
+    .workstation-container { display: flex; height: 100vh; width: 100vw; background: #f8fafc; }
     
     /* LEFT PANEL: SLIDE NAVIGATOR */
-    .slide-nav-panel { width: 340px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
-    .nav-header { padding: 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+    .slide-nav-panel { width: 340px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.03); }
+    
+    /* NEW: BACK BUTTON HEADER */
+    .app-header { padding: 15px 20px; background: var(--primary-navy); color: white; display: flex; align-items: center; gap: 10px; }
+    .btn-back { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+    .btn-back:hover { color: white; }
+    
+    .nav-header { padding: 20px; border-bottom: 1px solid #f1f5f9; background: #fff; }
     .nav-title { font-size: 1.1rem; font-weight: 800; color: var(--primary-navy); letter-spacing: -0.5px; margin: 0; }
     .nav-meta { font-size: 0.8rem; color: #64748b; margin-top: 4px; font-weight: 500; }
     
@@ -83,12 +94,9 @@
     .issue-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
     .issue-fail { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
     .issue-warn { background: #fefce8; color: #a16207; border: 1px solid #fef9c3; }
-    
-    /* FIX BUTTONS */
     .btn-fix { background: #fff; border: 1px solid var(--compliance-green); color: var(--compliance-green); padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-fix:hover { background: var(--compliance-green); color: white; }
     .btn-fix.staged { background: var(--compliance-green); color: white; cursor: default; opacity: 0.7; }
-    
     .remediation-box { background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid var(--intelligent-teal); padding: 20px; margin: 20px 30px; border-radius: 4px; }
     .critique-text { color: #475569; font-style: italic; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.6; }
     .fix-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -115,6 +123,13 @@
 
 <div class="workstation-container">
     <div class="slide-nav-panel">
+        <div class="app-header">
+            <a href="{{ url_for('projects_page') }}" class="btn-back">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                Back to Projects
+            </a>
+        </div>
+
         <div class="nav-header">
             <h2 class="nav-title">AuditSlide AI</h2>
             <div class="nav-meta">Workstation Mode</div>
