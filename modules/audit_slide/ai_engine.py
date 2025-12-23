@@ -11,6 +11,7 @@ from datetime import datetime
 
 # --- Provider SDKs ---
 try:
+    # FIXED: Use the correct standard library namespace
     import google.generativeai as genai
     GEMINI_AVAILABLE = True
 except ImportError:
@@ -31,7 +32,7 @@ from .prompts import get_batch_manager_prompt, get_batch_executor_prompt, get_re
 sys_logger = logging.getLogger('platform_system')
 ai_logger = logging.getLogger('audit_tool')
 
-# --- MASTER MODEL CONFIGURATION (USER SPECIFIED) ---
+# --- MASTER MODEL CONFIGURATION (PRESERVED) ---
 MODEL_MAPPING = {
     "AGENT_1": {
         "ANTHROPIC": "claude-3-sonnet-20240229",
@@ -66,9 +67,11 @@ class TokenTracker:
 
     def _init_csv(self):
         if not os.path.exists(self.csv_file):
-            with open(self.csv_file, 'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow(['Timestamp', 'Agent', 'Provider', 'Model', 'Input_Tokens', 'Output_Tokens', 'Latency_Sec', 'Status'])
+            try:
+                with open(self.csv_file, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(['Timestamp', 'Agent', 'Provider', 'Model', 'Input_Tokens', 'Output_Tokens', 'Latency_Sec', 'Status'])
+            except Exception: pass
 
     def log_usage(self, agent, provider, model, input_tok, output_tok, latency, status="SUCCESS"):
         try:
@@ -112,13 +115,14 @@ class AIEngine:
         try:
             client = None
             if provider == "GEMINI":
-                # FIXED: Standard Initialization Logic
+                # FIXED: Correct initialization for standard Google SDK
                 api_key = self.config.get('gemini_api_key')
                 if api_key and GEMINI_AVAILABLE:
                     genai.configure(api_key=api_key)
                     client = genai
                 else:
                     sys_logger.error("Gemini Key Missing or SDK not found")
+            
             elif provider == "OPENAI":
                 client = OpenAI(api_key=self.config.get('openai_api_key'))
             elif provider == "ANTHROPIC":
@@ -158,11 +162,14 @@ class AIEngine:
 
         ai_logger.info(f"STARTING SMART BATCH: {len(active_slides)} Slides (Skipped {len(skipped_results)})")
         
+        # --- BATCH PIPELINE ---
+        # 1. Agent 1 (Manager): Analyze Outline
         sys_prompt, user_msg = get_batch_manager_prompt(active_slides)
         ai_logger.info("BATCH STEP 1: Agent 1 analyzing outline...")
         topic_summary = self.execute_agent("AGENT_1", user_msg, sys_prompt)
         ai_logger.info(f" -> Topic: {topic_summary}")
 
+        # 2. Agent 2 (Researcher): Generate Query & Lookup
         sys_prompt_a2, user_msg_a2 = get_research_query_prompt(topic_summary)
         ai_logger.info("BATCH STEP 2A: Agent 2 generating optimized query...")
         optimized_query = self.execute_agent("AGENT_2", user_msg_a2, sys_prompt_a2)
@@ -171,10 +178,12 @@ class AIEngine:
         ai_logger.info("BATCH STEP 2B: Consulting Vector DB...")
         research_context = self.query_vector_db(optimized_query)
         
+        # 3. Agent 3 (Executor): Full Analysis
         sys_prompt, user_msg = get_batch_executor_prompt(active_slides, research_context, self.ai_context_prompt, self.config, self.brand_config)
         ai_logger.info(f"BATCH STEP 3: Agent 3 executing full analysis...")
         raw_response = self.execute_agent("AGENT_3", user_msg, sys_prompt)
         
+        # 4. Merge Results
         final_results = skipped_results
         try:
             ai_results = self._clean_json(raw_response)
@@ -213,8 +222,8 @@ class AIEngine:
 
         start_time = time.time(); in_tokens, out_tokens = 0, 0; response_text = ""
         try:
-            # This logic block dispatches the request to the correct provider SDK
             if provider == "GEMINI":
+                # FIXED: Correct generation method for standard SDK
                 model = client.GenerativeModel(model_name)
                 full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
                 res = model.generate_content(full_prompt)
@@ -222,22 +231,26 @@ class AIEngine:
                 if hasattr(res, 'usage_metadata'):
                     in_tokens = res.usage_metadata.prompt_token_count
                     out_tokens = res.usage_metadata.candidates_token_count
+            
             elif provider == "MISTRALAI":
                 msgs = [{"role": "user", "content": prompt}]
                 if system_instruction: msgs.insert(0, {"role": "system", "content": system_instruction})
                 res = client.chat(model=model_name, messages=msgs)
                 response_text = res.choices[0].message.content
                 if hasattr(res, 'usage'): in_tokens, out_tokens = res.usage.prompt_tokens, res.usage.completion_tokens
+            
             elif provider in ["OPENAI", "GROQ"]:
                 msgs = [{"role": "user", "content": prompt}]
                 if system_instruction: msgs.insert(0, {"role": "system", "content": system_instruction})
                 res = client.chat.completions.create(model=model_name, messages=msgs)
                 response_text = res.choices[0].message.content
                 if hasattr(res, 'usage'): in_tokens, out_tokens = res.usage.prompt_tokens, res.usage.completion_tokens
+            
             elif provider == "ANTHROPIC":
                 res = client.messages.create(model=model_name, max_tokens=4096, system=system_instruction or "", messages=[{"role": "user", "content": prompt}])
                 response_text = res.content[0].text
                 if hasattr(res, 'usage'): in_tokens, out_tokens = res.usage.input_tokens, res.usage.output_tokens
+            
             elif provider == "AWS_BEDROCK":
                 body = json.dumps({"prompt": f"\n\nHuman: {system_instruction}\n{prompt}\n\nAssistant:", "max_tokens_to_sample": 4096})
                 res = client.invoke_model(body=body, modelId=model_name)
