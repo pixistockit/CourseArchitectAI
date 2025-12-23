@@ -1,52 +1,81 @@
 {% extends 'layout.html' %}
 
 {% block title %}Projects{% endblock %}
- 
+
 {% block content %}
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
     <div>
         <h1 class="page-title">Audit Projects</h1>
         <p class="page-subtitle">Manage, review, and initiate all forensic compliance audits.</p>
     </div>
-    <a href="{{ url_for('new_audit') }}" class="btn btn-primary">
-        <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        <span>New Audit</span>
-    </a>
+    <div style="display: flex; gap: 15px; align-items: center;">
+        <div style="position: relative;">
+            <input type="text" id="project-search" class="form-input" placeholder="Search projects..." style="padding-left: 35px; width: 250px;" onkeyup="filterProjects(this.value)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </div>
+        <a href="{{ url_for('new_audit') }}" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>New Audit</span>
+        </a>
+    </div>
 </div>
 
 <div class="project-groups-container">
     {% if projects %}
         {% for group_name, files in projects.items() %}
-        <div class="project-card">
+        <div class="project-card" data-group-name="{{ group_name | lower }}">
             <div class="project-card-header">
-                <div class="project-card-title">{{ group_name }}</div>
-                <div class="project-card-meta">{{ files|length }} Audits</div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="project-card-title">{{ group_name }}</div>
+                    <div class="project-card-meta">({{ files|length }} Audits)</div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-action" title="Add file to this project" onclick="addAuditToFolder('{{ group_name }}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> Add File
+                    </button>
+                    <button class="btn-action btn-delete" title="Delete entire project folder" onclick="deleteProjectGroup('{{ group_name }}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Delete Folder
+                    </button>
+                </div>
             </div>
             <div class="project-card-body">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>File Name</th>
-                            <th>Date</th>
-                            <th>Score</th>
-                            <th>Issues</th>
-                            <th>Actions</th>
+                            <th width="40%">File Name</th>
+                            <th width="15%">Date</th>
+                            <th width="10%">Score</th>
+                            <th width="10%">Issues</th>
+                            <th width="25%" style="text-align:right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for file in files %}
-                        <tr>
-                            <td>{{ file.filename }}</td>
-                            <td>{{ file.date }}</td>
+                        <tr class="file-row" data-filename="{{ file.filename | lower }}">
+                            <td style="font-weight:600; color:var(--primary-navy);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C43E1C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; vertical-align:text-bottom;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                {{ file.filename }}
+                            </td>
+                            <td style="color:var(--slate-500);">{{ file.date }}</td>
                             <td>
                                 <span class="score-badge {% if file.score >= 90 %}score-green{% elif file.score >= 70 %}score-amber{% else %}score-red{% endif %}">
                                     {{ "%.1f"|format(file.score) }}%
                                 </span>
                             </td>
                             <td>{{ file.issues }}</td>
-                            <td>
-                                <a href="{{ url_for('view_workstation', report_id=file.id) }}" class="btn-action">View</a>
-                                <button class="btn-action btn-delete" data-report-id="{{ file.id }}">Delete</button>
+                            <td style="text-align:right;">
+                                <button class="btn-action" title="View Executive Summary" onclick="window.open('{{ url_for('view_report', report_id=file.id) }}', '_blank')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                                </button>
+                                <button class="btn-action" title="Open ID Workstation" onclick="window.open('{{ url_for('view_workstation', report_id=file.id) }}', '_blank')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                                </button>
+                                <button class="btn-action" title="Print PDF Report" onclick="printReport('{{ file.id }}')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                </button>
+                                <button class="btn-action btn-delete" title="Delete Audit" data-report-id="{{ file.id }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -67,29 +96,77 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteButtons = document.querySelectorAll('.btn-delete');
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const reportId = this.dataset.reportId;
-            if (confirm(`Are you sure you want to permanently delete this report (${reportId})?`)) {
-                fetch(`/delete/${reportId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'deleted') {
-                        // For simplicity, we just reload the page.
-                        // A more advanced UI would remove the row directly.
-                        window.location.reload();
-                    } else {
-                        alert('Error: Could not delete the report.');
-                    }
-                });
-            }
+    // Project Filtering Logic
+    function filterProjects(text) {
+        const val = text.toLowerCase();
+        document.querySelectorAll('.project-card').forEach(card => {
+            const groupName = card.dataset.groupName;
+            let hasVisibleFile = false;
+            
+            card.querySelectorAll('.file-row').forEach(row => {
+                const fileName = row.dataset.filename;
+                if (fileName.includes(val) || groupName.includes(val)) {
+                    row.style.display = 'table-row';
+                    hasVisibleFile = true;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            card.style.display = hasVisibleFile ? 'block' : 'none';
+        });
+    }
+
+    // Print Logic
+    function printReport(id) {
+        const url = `{{ url_for('view_report', report_id='PLACEHOLDER') }}`.replace('PLACEHOLDER', id) + '?print=true';
+        window.open(url, '_blank');
+    }
+
+    // Add Audit to Specific Folder
+    function addAuditToFolder(groupName) {
+        window.location.href = `{{ url_for('new_audit') }}?project=${encodeURIComponent(groupName)}`;
+    }
+
+    // Delete Logic
+    function deleteProjectGroup(groupName) {
+        if(confirm(`⚠️ Are you sure you want to delete the ENTIRE folder "${groupName}"? This will delete all audits inside it.`)) {
+            fetch('/delete-project-group', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ project_name: groupName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') window.location.reload();
+                else alert("Error deleting group: " + data.message);
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteButtons = document.querySelectorAll('.btn-delete');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const reportId = this.dataset.reportId;
+                if (!reportId) return; // Skip if it's the group delete button
+                
+                if (confirm(`Are you sure you want to permanently delete this report?`)) {
+                    fetch(`/delete/${reportId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'deleted') {
+                            window.location.reload();
+                        } else {
+                            alert('Error: Could not delete the report.');
+                        }
+                    });
+                }
+            });
         });
     });
-});
 </script>
 {% endblock %}
