@@ -32,11 +32,32 @@
     }
     .btn-sidebar:hover { border-color: var(--intelligent-teal); color: var(--intelligent-teal); background: #f8fafc; }
     
+    /* BATCH AI BUTTON STYLES */
     #btn-batch-ai {
-        background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; border: none;
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        color: white;
+        border: none;
         box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        /* Add transition for smooth state change */
+        transition: all 0.3s ease;
     }
-    #btn-batch-ai:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4); color: white; }
+
+    #btn-batch-ai:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+        color: white;
+    }
+
+    /* --- DISABLE CLICK & VISUALS --- */
+    #btn-batch-ai:disabled {
+        background: #cbd5e1;       /* Greyed out background */
+        color: #64748b;            /* Muted text color */
+        cursor: not-allowed;       /* Show 'stop' cursor */
+        transform: none;           /* Prevent hover movement */
+        box-shadow: none;          /* Remove glow */
+        pointer-events: none;      /* Strictly prevent clicking */
+        opacity: 0.7;
+    }
 
     .progress-container { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; display: none; }
     .progress-label { font-size: 0.75rem; font-weight: 700; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 6px; font-family: 'IBM Plex Mono', monospace; }
