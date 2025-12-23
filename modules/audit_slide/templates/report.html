@@ -14,11 +14,11 @@
 
         :root { 
             /* BRAND PALETTE - Corporate Clarity */
-            --primary-navy: #0A2342;       
-            --intelligent-teal: #005F73;   
-            --action-amber: #E9B44C;       
-            --compliance-green: #2A9D8F;   
-            --neutral-bg: #F4F6F8;         
+            --primary-navy: #0A2342;        
+            --intelligent-teal: #005F73;    
+            --action-amber: #E9B44C;        
+            --compliance-green: #2A9D8F;    
+            --neutral-bg: #F4F6F8;          
             --white: #FFFFFF; 
             --text-dark: #334155; 
             --text-light: #64748B; 
@@ -122,14 +122,6 @@
         .cadence-placeholder h3 { font-size: 1.2rem; margin: 0 0 10px 0; color: var(--text-dark); }
         .cadence-placeholder p { font-size: 0.9rem; color: var(--text-light); max-width: 600px; margin: 0 auto 15px auto; }
         .tag-pill { background: #E0F7FA; color: #006064; padding: 2px 8px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; border: 1px solid #B2EBF2; }
-
-        /* DEBUG LOG TABLE */
-        .debug-table { width: 100%; font-size: 0.75rem; border-collapse: collapse; margin-top: 10px; }
-        .debug-table th { background: #eee; text-align: left; padding: 5px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; color: #444; }
-        .debug-table td { border-bottom: 1px solid #f0f0f0; padding: 6px; font-family: 'IBM Plex Mono', monospace; color: #555; vertical-align: middle; }
-        .log-row-skipped { background: #fff5f5; color: #991b1b; }
-        .log-row-funded { background: #f0fdf4; color: #166534; }
-        .log-row-estimated { background: #fff; color: #64748b; }
 
         .gagne-bar-container { margin-top: 15px; background: rgba(0,0,0,0.06); height: 8px; border-radius: 4px; overflow: hidden; }
         .gagne-bar-fill { height: 100%; border-radius: 4px; }
@@ -242,7 +234,6 @@
         let totalTimeAccumulated = 0;
         let lastActivity = "";
         let slidesWithTags = 0;
-        let debugRows = ""; // For the log table
 
         sortedSlideKeys.forEach(key => {
             const slide = allSlides[key];
@@ -260,26 +251,21 @@
             const currentActivity = actMatch ? actMatch[1].trim().toLowerCase() : "";
 
             let slideTimeContribution = 0;
-            let logStatus = "";
 
             if (explicitTime > 0) {
                 if (currentActivity && currentActivity === lastActivity) {
                     slideTimeContribution = 0; 
-                    logStatus = "SKIPPED (Funded by prev)";
                 } else {
                     slideTimeContribution = explicitTime;
                     if (currentActivity) lastActivity = currentActivity; 
-                    logStatus = "FUNDED (Explicit Time)";
                 }
             } else {
                 const wordCount = (notes + " " + fullText).split(/\s+/).length;
                 slideTimeContribution = Math.max(0.5, wordCount / 130);
-                logStatus = "ESTIMATED (Word Count)";
             }
 
             // 2. Robust Gagné Regex Matching
             let eventId = 0;
-            let eventNameDetected = "None";
 
             if (notes.match(/elicit\s*performance|practice/i)) { eventId = 6; }
             else if (notes.match(/present\s*content|presentation/i)) { eventId = 4; }
@@ -296,30 +282,14 @@
                 gagneMinutes[eventId].mins += slideTimeContribution;
                 totalTimeAccumulated += slideTimeContribution;
                 slidesWithTags++;
-                eventNameDetected = gagneMinutes[eventId].name;
-            } else {
-                // If it was Explicitly Funded but had no Tag, we still count time but it goes to "Untagged" bucket effectively
-                // This logic ensures totalTimeAccumulated matches the bar
-                if (slideTimeContribution > 0 && logStatus.includes("FUNDED")) {
-                     // Optionally assign to "Present Content" default or keep separate
-                }
             }
-
-            // Build Debug Row
-            const rowClass = logStatus.includes("SKIPPED") ? 'log-row-skipped' : (logStatus.includes("FUNDED") ? 'log-row-funded' : 'log-row-estimated');
-            
-            debugRows += `<tr class="${rowClass}">
-                <td>${sNum}</td>
-                <td>${eventId > 0 ? eventNameDetected : '-'}</td>
-                <td>${Math.round(slideTimeContribution * 10) / 10} min</td>
-                <td>${logStatus}</td>
-                <td style="font-size:0.65rem;">${notes.substring(0, 50)}...</td>
-            </tr>`;
         });
 
         const totalSlides = s.total_slides_checked;
         const tagRatio = totalSlides > 0 ? (slidesWithTags / totalSlides) : 0;
-        const cadenceThreshold = 0.8; 
+        
+        // Changed to 0.0 to ensure charts always show if any data exists
+        const cadenceThreshold = 0.0; 
         const showCadence = tagRatio >= cadenceThreshold;
 
         let cadenceHtml = '';
@@ -357,16 +327,6 @@
                 <div class="cadence-legend-grid">
                     ${legendHtml}
                 </div>
-
-                <details style="margin-top:20px; font-size:0.8rem; color:#666;">
-                    <summary style="cursor:pointer; font-weight:600; font-family:'Plus Jakarta Sans', sans-serif;">View Calculation Log (Debug)</summary>
-                    <div style="max-height:300px; overflow-y:auto; border:1px solid #eee; margin-top:10px;">
-                        <table class="debug-table">
-                            <thead><tr><th>Slide</th><th>Event</th><th>Time</th><th>Logic</th><th>Snippet</th></tr></thead>
-                            <tbody>${debugRows}</tbody>
-                        </table>
-                    </div>
-                </details>
             </div>`;
         } else {
             cadenceHtml = `
@@ -374,16 +334,6 @@
                 <h3>Instructional Cadence Report Unavailable</h3>
                 <p>We could not generate a meaningful time-based cadence timeline because fewer than 80% of your slides contain Gagné event tags.</p>
                 <div style="font-size:0.8rem; opacity:0.7; margin-top:15px;">Current Tagged Ratio: ${Math.round(tagRatio * 100)}% (Requires 80%)</div>
-                
-                <details style="margin-top:20px; text-align:left; font-size:0.8rem; color:#666;">
-                    <summary style="cursor:pointer; font-weight:600; font-family:'Plus Jakarta Sans', sans-serif;">View Debug Log</summary>
-                    <div style="max-height:300px; overflow-y:auto; border:1px solid #eee; margin-top:10px;">
-                        <table class="debug-table">
-                            <thead><tr><th>Slide</th><th>Event</th><th>Time</th><th>Logic</th></tr></thead>
-                            <tbody>${debugRows}</tbody>
-                        </table>
-                    </div>
-                </details>
             </div>`;
         }
 
@@ -419,7 +369,7 @@
                 </div>`;
             
             if (isExempt) {
-                issuesHtml += `<div class="exempt-message">• EXEMPT FROM ANALYSIS •<br><span style="font-size:0.8rem; font-weight:400; opacity:0.7;">This slide was excluded by configuration.</span></div>`;
+                issuesHtml += `<div class="exempt-message" style="padding:20px 35px;">• EXEMPT FROM ANALYSIS •<br><span style="font-size:0.8rem; font-weight:400; opacity:0.7;">This slide was excluded by configuration.</span></div>`;
             } else {
                 issuesHtml += `<table><thead><tr><th width="15%">Category</th><th width="15%">Shape</th><th width="40%">Details & Context</th><th width="30%">Recommended Action</th></tr></thead><tbody>`;
                 items.forEach(issue => {
