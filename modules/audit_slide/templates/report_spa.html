@@ -329,6 +329,18 @@
             console.error("Audit Data not found! Template injection likely failed."); 
         } 
         
+        // --- DATA NORMALIZATION (Fix for TypeError) ---
+        function normalizeIssues(data) {
+            if (!data) return [];
+            // If it's a standard Array, return it
+            if (Array.isArray(data)) return data;
+            // If it's a Python HybridReport serialized as an object with 'detailed_issues' key
+            if (data.detailed_issues && Array.isArray(data.detailed_issues)) return data.detailed_issues;
+            // If it's a dict (e.g. key-value), convert values to array
+            if (typeof data === 'object') return Object.values(data).filter(i => i && i.slide);
+            return [];
+        }
+
         // --- GLOBAL VARIABLES & CACHE ---
         const totalIssues = auditData ? auditData.summary.total_errors : 0;
         const totalSlides = auditData ? auditData.summary.total_slides_checked : 0;
@@ -340,9 +352,15 @@
 
         if (auditData) {
             for(let i=1; i<=totalSlides; i++) { groupedIssues[i] = []; }
-            auditData.detailed_issues.forEach(i => {
-                if (!groupedIssues[i.slide]) groupedIssues[i.slide] = [];
-                groupedIssues[i.slide].push(i);
+            
+            // USE NORMALIZED DATA HERE
+            const issuesList = normalizeIssues(auditData.detailed_issues);
+            
+            issuesList.forEach(i => {
+                if (i && i.slide) { // Ensure item is valid
+                    if (!groupedIssues[i.slide]) groupedIssues[i.slide] = [];
+                    groupedIssues[i.slide].push(i);
+                }
             });
         }
 
@@ -676,6 +694,7 @@
             });
             nav.innerHTML = html;
         }
+        
         function renderCards() {
             const area = document.getElementById('content-area'); 
             let html = '';
@@ -690,7 +709,18 @@
                     issues.forEach((issue, idx) => {
                         let catClass = 'category-content';
                         const check = issue.check ? issue.check.toLowerCase() : 'unknown';
-                        const details = issue.details || '';
+                        
+                        // --- TRUNCATION LOGIC (RESTORED) ---
+                        let details = issue.details || '';
+                        let fullDetails = details.replace(/"/g, '&quot;'); // Escape for tooltip
+                        let displayText = details;
+                        
+                        // If text is long, truncate and add tooltip
+                        if (details.length > 140) {
+                            displayText = details.substring(0, 140) + '...';
+                            displayText = `<span title="${fullDetails}" style="cursor:help; border-bottom:1px dotted #999;">${displayText}</span>`;
+                        }
+
                         const detailsLower = details.toLowerCase();
                         let objInfo = ''; let shapeArg = ''; 
                         if (issue.shape_name) { objInfo = `<div class="obj-name"><i class="fas fa-vector-square"></i> ${issue.shape_name}</div>`; shapeArg = issue.shape_name.replace(/'/g, "\\'"); }
@@ -702,7 +732,7 @@
                         else if (check.includes('title') && detailsLower.includes('placeholder')) fixAction = `<button class="btn-safe-fix" onclick="stageSafeFix(${slideNum}, ${idx}, 'fix_slide_title', '${shapeArg}', this)"><i class="fas fa-magic"></i> Auto Insert Title</button>`;
                         else if (check.includes('wcag') && (detailsLower.includes('contrast') || detailsLower.includes('failure') || detailsLower.includes('ratio'))) { if (!detailsLower.includes('table bg') && !detailsLower.includes('image/texture')) fixAction = `<button class="btn-safe-fix" onclick="stageSafeFix(${slideNum}, ${idx}, 'fix_contrast', '${shapeArg}', this)"><i class="fas fa-palette"></i> Smart Contrast</button>`; }
                         else if (check.includes('notes') && (detailsLower.includes('font') || detailsLower.includes('size'))) fixAction = `<button class="btn-safe-fix" onclick="stageSafeFix(${slideNum}, ${idx}, 'fix_font_family', 'Speaker Notes', this)"><i class="fas fa-font"></i> Standardize Notes</button>`;
-                        html += `<tr class="issue-row ${catClass}" id="row-${slideNum}-${idx}"><td><label class="check-container"><input type="checkbox" id="chk-${slideNum}-${idx}" onchange="toggleIssue(${slideNum}, ${idx}, this)"><span class="checkmark"></span></label></td><td><span class="badge badge-fail">${issue.check || 'Issue'}</span><br>${details}${objInfo}</td><td>${fixAction}</td></tr>`;
+                        html += `<tr class="issue-row ${catClass}" id="row-${slideNum}-${idx}"><td><label class="check-container"><input type="checkbox" id="chk-${slideNum}-${idx}" onchange="toggleIssue(${slideNum}, ${idx}, this)"><span class="checkmark"></span></label></td><td><span class="badge badge-fail">${issue.check || 'Issue'}</span><br>${displayText}${objInfo}</td><td>${fixAction}</td></tr>`;
                     });
                     html += `</tbody></table>`;
                 }
