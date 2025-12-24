@@ -7,6 +7,7 @@ import json
 import shutil
 import csv
 import logging
+import importlib
 from datetime import datetime
 from flask import Flask, render_template, request, url_for, send_from_directory, jsonify, redirect
 from werkzeug.utils import secure_filename
@@ -85,6 +86,7 @@ def is_analysis_stale(report_dir):
 def get_or_create_cached_report(report_id, template_name, output_filename, force_rebuild=False):
     """
     Ensures static HTML reports are generated and up-to-date.
+    Checks if the template file has changed since the last build.
     """
     report_dir = os.path.join(app.config['OUTPUT_FOLDER'], report_id)
     json_path = os.path.join(report_dir, 'audit_report.json')
@@ -105,6 +107,8 @@ def get_or_create_cached_report(report_id, template_name, output_filename, force
                 cache_mtime = os.path.getmtime(cached_path)
                 data_mtime = os.path.getmtime(json_path)
                 template_mtime = os.path.getmtime(template_path)
+                
+                # Rebuild if data changed OR if the HTML template changed
                 if data_mtime > cache_mtime or template_mtime > cache_mtime:
                     needs_rebuild = True
             except Exception as e:
@@ -118,6 +122,7 @@ def get_or_create_cached_report(report_id, template_name, output_filename, force
             with open(json_path, 'r', encoding='utf-8') as f: 
                 full_data = json.load(f)
             
+            # Serialize data for JS injection
             json_str = json.dumps(full_data)
             final_html = html_template.replace('/* INSERT_JSON_HERE */', f"const auditData = {json_str};")
             
@@ -353,43 +358,57 @@ def view_report(report_id):
     json_path = os.path.join(report_dir, 'audit_report.json')
     
     # --- AUTO-UPDATE CHECK ---
-    # Check if the generated report is "stale" compared to current code/config
+    # Checks if JSON is older than Config or Code
+    # Also checks if the HTML template is newer than the generated report
+    
     force_rebuild = False
     
+    # 1. Logic Stale Check (Re-run Analyzer)
     if os.path.exists(json_path) and is_analysis_stale(report_dir):
         logger_service.log_system('info', f"Report {report_id} is stale. Re-running analysis logic...")
         try:
-            # 1. Load existing data to find original filename
+            # Load old data to find original filename
             with open(json_path, 'r') as f: 
                 old_data = json.load(f)
                 filename = old_data.get('summary', {}).get('presentation_name')
             
-            # 2. Find the PPTX file (It should still be in uploads)
+            # Find the PPTX file
             if filename:
                 pptx_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                # Fallback: Check if file exists, if not try to find it
+                # Fallback search if exact path fails
                 if not os.path.exists(pptx_path):
-                    # Try simple glob match in uploads if exact name fails
                     matches = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], f"*{filename}"))
                     if matches: pptx_path = matches[0]
 
                 if os.path.exists(pptx_path):
-                    # 3. Re-Run Analysis (This loads fresh settings from analyzer.py)
+                    # --- CRITICAL: RELOAD MODULES TO GET NEW CONFIG ---
+                    import modules.audit_slide.analyzer
+                    importlib.reload(modules.audit_slide.analyzer)
+                    from modules.audit_slide.analyzer import PptxAnalyzer
+                    
+                    # Re-Run Analysis with new settings
                     analyzer = PptxAnalyzer(pptx_path)
-                    new_data = analyzer.run_analysis()
                     
-                    # 4. Preserve Project Name & ID
+                    # Use the hybrid report object directly (it acts as a dict)
+                    hybrid_result = analyzer.run_analysis()
+                    
+                    # Convert to standard dict for saving if needed, though hybrid works as dict
+                    # We ensure we have the 'summary' key which hybrid report has
+                    new_data = dict(hybrid_result)
+                    
+                    # Preserve Project Name & ID
                     new_data['summary']['project_name'] = old_data.get('summary', {}).get('project_name')
-                    
-                    # 5. Overwrite JSON
+                    new_data['summary']['master_slide_count'] = old_data.get('summary', {}).get('master_slide_count', 1)
+
+                    # Overwrite JSON
                     with open(json_path, 'w') as f: 
                         json.dump(new_data, f, indent=4)
                     
-                    force_rebuild = True # Force HTML regeneration
+                    force_rebuild = True # Data changed, must rebuild HTML
         except Exception as e:
             logger_service.log_system('error', f"Failed to auto-update stale report: {e}")
 
-    # Generate or serve HTML (With force_rebuild if needed)
+    # 2. Template Stale Check (Re-gen HTML only) handled inside get_or_create...
     path, status = get_or_create_cached_report(report_id, 'report.html', 'Printable Executive Summary.html', force_rebuild=force_rebuild)
     
     if status != 200: return f"Error generating report: {status}", status
@@ -397,147 +416,9 @@ def view_report(report_id):
 
 @app.route('/view-workstation/<report_id>')
 def view_workstation(report_id):
-    json_path = os.path.join(app.config['OUTPUT_FOLDER'], report_id, 'audit_report.json')
+    # Similar stale check logic could be applied here if Workstation views depend on generated HTML
+    # Currently it loads JSON directly via JS, so we just ensure the JSON is fresh via view_report logic or similar.
+    # For now, we assume view-report is the entry point that triggers updates.
     
-    if not os.path.exists(json_path):
-        return f"Error: Report data not found for ID {report_id}", 404
-
-    try:
-        with open(json_path, 'r', encoding='utf-8') as f:
-            audit_data = json.load(f)
-    except Exception as e:
-        return f"Error reading report JSON: {e}", 500
-
-    return render_template('workstation.html', active_page='projects', audit_data=audit_data)
-
-@app.route('/delete/<report_id>', methods=['POST'])
-def delete_report(report_id):
-    path = os.path.join(app.config['OUTPUT_FOLDER'], report_id)
-    if os.path.exists(path):
-        shutil.rmtree(path)
-        logger_service.log_system('info', f"Deleted report {report_id}")
-        return jsonify({"status": "deleted"})
-    return jsonify({"status": "error"}), 404
-
-@app.route('/delete-project-group', methods=['POST'])
-def delete_project_group():
-    data = request.json
-    target_project = data.get('project_name')
-    if not target_project: return jsonify({"status": "error", "message": "Missing project name"}), 400
-    
-    deleted_count = 0
-    if os.path.exists(OUTPUT_FOLDER):
-        for item in os.listdir(OUTPUT_FOLDER):
-            item_path = os.path.join(OUTPUT_FOLDER, item)
-            if os.path.isdir(item_path):
-                json_path = os.path.join(item_path, 'audit_report.json')
-                if os.path.exists(json_path):
-                    try:
-                        with open(json_path, 'r') as f:
-                            data = json.load(f)
-                            p_name = data.get('summary', {}).get('project_name')
-                            if p_name == target_project:
-                                shutil.rmtree(item_path)
-                                deleted_count += 1
-                    except: pass
-                    
-    logger_service.log_system('info', f"Deleted project group '{target_project}' ({deleted_count} files)")
-    return jsonify({"status": "success", "deleted_count": deleted_count})
-
-@app.route('/reanalyze/<report_id>', methods=['POST'])
-def reanalyze_deck(report_id):
-    if 'file' not in request.files: return jsonify({"status": "error", "message": "No file uploaded"}), 400
-    file = request.files['file']
-    
-    if file and file.filename.lower().endswith(('.pptx', '.ppt')):
-        try:
-            audit_output_dir = os.path.join(app.config['OUTPUT_FOLDER'], report_id)
-            filename = secure_filename(file.filename)
-            save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{report_id}_{filename}")
-            file.save(save_path)
-            
-            run_audit_slide(save_path, audit_output_dir)
-            return jsonify({"status": "success", "message": "Re-analysis complete"})
-        except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 500
-    return jsonify({"status": "error", "message": "Invalid file type"}), 400
-
-# --- FIX ENGINE & DOWNLOADS ---
-
-@app.route('/apply-fix-batch', methods=['POST'])
-def apply_fix_batch():
-    data = request.json
-    filename = data.get('filename')
-    fixes = data.get('fixes')
-    
-    if not filename or not fixes: 
-        return jsonify({"status": "error", "message": "Missing filename or fixes"}), 400
-
-    input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    if not os.path.exists(input_path):
-        for root, _, files in os.walk(app.config['OUTPUT_FOLDER']):
-            if filename in files:
-                input_path = os.path.join(root, filename)
-                break
-    
-    if not os.path.exists(input_path):
-        return jsonify({"status": "error", "message": "Original file not found"}), 404
-
-    try:
-        engine = FixEngine()
-        remediated_dir = os.path.join(app.config['OUTPUT_FOLDER'], 'remediated_decks')
-        os.makedirs(remediated_dir, exist_ok=True)
-        
-        new_file_path = engine.apply_fixes(input_path, fixes, remediated_dir)
-        
-        if new_file_path:
-            rel_name = os.path.basename(new_file_path)
-            return jsonify({"status": "success", "download_url": f"/download-fixed/{rel_name}"})
-        else:
-            return jsonify({"status": "error", "message": "No changes applied"}), 400
-            
-    except Exception as e:
-        logger_service.log_system('error', f"Fix Engine failed: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/download-fixed/<filename>')
-def download_fixed(filename):
-    directory = os.path.join(app.config['OUTPUT_FOLDER'], 'remediated_decks')
-    return send_from_directory(directory, filename, as_attachment=True)
-
-# --- AI ENDPOINTS (ADDED MISSING ROUTES) ---
-
-@app.route('/run-ai-batch', methods=['POST'])
-def run_ai_batch():
-    """Endpoint for Batch AI Analysis (All Slides)."""
-    try:
-        data = request.json
-        slides = data.get('slides', [])
-        total_count = data.get('total_slides', 0)
-        
-        engine = AIEngine()
-        results = engine.analyze_batch(slides, total_slide_count=total_count)
-        
-        return jsonify({"status": "success", "data": results})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@app.route('/run-ai-agent', methods=['POST'])
-def run_ai_agent():
-    """Endpoint for Single Slide Analysis."""
-    try:
-        slide_data = request.json
-        engine = AIEngine()
-        
-        # Analyze single slide using the same batch pipeline for consistency
-        results = engine.analyze_batch([slide_data], total_slide_count=0)
-        
-        if results:
-            return jsonify({"status": "success", "data": results[0]})
-        else:
-            return jsonify({"status": "error", "message": "No data returned"}), 500
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Trigger the update check by calling the logic directly (optional but safer)
+    report_dir = os.path.join(app.
