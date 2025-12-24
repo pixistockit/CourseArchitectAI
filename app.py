@@ -1,6 +1,7 @@
 # /app.py - MASTER PLATFORM CONTROLLER
 
 import os
+import glob
 import uuid
 import json
 import shutil
@@ -16,6 +17,8 @@ from services.logger_service import LoggerService
 from modules.audit_slide.qa_tool import run_audit_slide
 from modules.audit_slide.ai_engine import AIEngine
 from modules.audit_slide.fix_engine import FixEngine
+# NEW: Import Analyzer class directly for re-runs
+from modules.audit_slide.analyzer import PptxAnalyzer 
 import modules.audit_slide.config as CFG 
 
 # --- CONFIGURATION ---
@@ -47,8 +50,39 @@ app.config.update(
 # Initialize Logger
 logger_service = LoggerService(base_data_path='data')
 
+# --- HELPER: SMART STALE CHECK ---
+def is_analysis_stale(report_dir):
+    """
+    Checks if the generated JSON report is older than the code or configuration.
+    If code/settings have changed, we return True to trigger a re-analysis.
+    """
+    json_path = os.path.join(report_dir, 'audit_report.json')
+    if not os.path.exists(json_path):
+        return True # Missing report = Stale
+
+    json_mtime = os.path.getmtime(json_path)
+
+    # List of critical files that affect the analysis logic
+    dependencies = [
+        'modules/audit_slide/analyzer.py',      # Core Logic
+        'modules/audit_slide/config.py',        # Hardcoded Settings
+        'modules/audit_slide/utils.py',         # Core Utils
+        os.path.join(CONFIG_DIR, 'llm_config.json'),   # User Settings
+        os.path.join(CONFIG_DIR, 'brand_config.json')  # Brand Settings
+    ]
+
+    for dep in dependencies:
+        if os.path.exists(dep):
+            dep_mtime = os.path.getmtime(dep)
+            # If code is NEWER than report -> Report is Stale
+            if dep_mtime > json_mtime:
+                print(f"🔄 Auto-Update Triggered: {os.path.basename(dep)} is newer than report.")
+                return True
+    
+    return False
+
 # --- HELPER: CACHE MANAGER ---
-def get_or_create_cached_report(report_id, template_name, output_filename):
+def get_or_create_cached_report(report_id, template_name, output_filename, force_rebuild=False):
     """
     Ensures static HTML reports are generated and up-to-date.
     """
@@ -60,16 +94,22 @@ def get_or_create_cached_report(report_id, template_name, output_filename):
     if not (os.path.exists(json_path) and os.path.exists(template_path)):
         return None, 404
 
-    needs_rebuild = True
-    if os.path.exists(cached_path):
-        try:
-            cache_mtime = os.path.getmtime(cached_path)
-            data_mtime = os.path.getmtime(json_path)
-            template_mtime = os.path.getmtime(template_path)
-            if cache_mtime > data_mtime and cache_mtime > template_mtime:
-                needs_rebuild = False
-        except Exception as e:
-            logger_service.log_system('warning', f"Cache timestamp check failed: {e}")
+    needs_rebuild = force_rebuild
+    
+    if not needs_rebuild:
+        if not os.path.exists(cached_path):
+            needs_rebuild = True
+        else:
+            try:
+                # Check if template or data is newer than the HTML file
+                cache_mtime = os.path.getmtime(cached_path)
+                data_mtime = os.path.getmtime(json_path)
+                template_mtime = os.path.getmtime(template_path)
+                if data_mtime > cache_mtime or template_mtime > cache_mtime:
+                    needs_rebuild = True
+            except Exception as e:
+                logger_service.log_system('warning', f"Cache timestamp check failed: {e}")
+                needs_rebuild = True
 
     if needs_rebuild:
         try:
@@ -266,6 +306,8 @@ def upload_file():
             os.makedirs(audit_output_dir, exist_ok=True)
             
             logger_service.log_system('info', f"Starting audit for {filename} ({unique_id})")
+            
+            # --- RUN AUDIT ---
             run_audit_slide(save_path, audit_output_dir)
             
             project_name = request.form.get('project_name')
@@ -307,7 +349,49 @@ def new_audit():
 
 @app.route('/view-report/<report_id>')
 def view_report(report_id):
-    path, status = get_or_create_cached_report(report_id, 'report.html', 'Printable Executive Summary.html')
+    report_dir = os.path.join(app.config['OUTPUT_FOLDER'], report_id)
+    json_path = os.path.join(report_dir, 'audit_report.json')
+    
+    # --- AUTO-UPDATE CHECK ---
+    # Check if the generated report is "stale" compared to current code/config
+    force_rebuild = False
+    
+    if os.path.exists(json_path) and is_analysis_stale(report_dir):
+        logger_service.log_system('info', f"Report {report_id} is stale. Re-running analysis logic...")
+        try:
+            # 1. Load existing data to find original filename
+            with open(json_path, 'r') as f: 
+                old_data = json.load(f)
+                filename = old_data.get('summary', {}).get('presentation_name')
+            
+            # 2. Find the PPTX file (It should still be in uploads)
+            if filename:
+                pptx_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                # Fallback: Check if file exists, if not try to find it
+                if not os.path.exists(pptx_path):
+                    # Try simple glob match in uploads if exact name fails
+                    matches = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], f"*{filename}"))
+                    if matches: pptx_path = matches[0]
+
+                if os.path.exists(pptx_path):
+                    # 3. Re-Run Analysis (This loads fresh settings from analyzer.py)
+                    analyzer = PptxAnalyzer(pptx_path)
+                    new_data = analyzer.run_analysis()
+                    
+                    # 4. Preserve Project Name & ID
+                    new_data['summary']['project_name'] = old_data.get('summary', {}).get('project_name')
+                    
+                    # 5. Overwrite JSON
+                    with open(json_path, 'w') as f: 
+                        json.dump(new_data, f, indent=4)
+                    
+                    force_rebuild = True # Force HTML regeneration
+        except Exception as e:
+            logger_service.log_system('error', f"Failed to auto-update stale report: {e}")
+
+    # Generate or serve HTML (With force_rebuild if needed)
+    path, status = get_or_create_cached_report(report_id, 'report.html', 'Printable Executive Summary.html', force_rebuild=force_rebuild)
+    
     if status != 200: return f"Error generating report: {status}", status
     return send_from_directory(os.path.dirname(path), os.path.basename(path))
 
@@ -421,13 +505,11 @@ def download_fixed(filename):
     directory = os.path.join(app.config['OUTPUT_FOLDER'], 'remediated_decks')
     return send_from_directory(directory, filename, as_attachment=True)
 
-# --- AI ENDPOINTS (FIXED MISSING ROUTES) ---
+# --- AI ENDPOINTS (ADDED MISSING ROUTES) ---
 
 @app.route('/run-ai-batch', methods=['POST'])
 def run_ai_batch():
-    """
-    Endpoint for Batch AI Analysis (All Slides).
-    """
+    """Endpoint for Batch AI Analysis (All Slides)."""
     try:
         data = request.json
         slides = data.get('slides', [])
@@ -442,14 +524,12 @@ def run_ai_batch():
 
 @app.route('/run-ai-agent', methods=['POST'])
 def run_ai_agent():
-    """
-    Endpoint for Single Slide Analysis.
-    """
+    """Endpoint for Single Slide Analysis."""
     try:
         slide_data = request.json
         engine = AIEngine()
         
-        # Analyze single slide
+        # Analyze single slide using the same batch pipeline for consistency
         results = engine.analyze_batch([slide_data], total_slide_count=0)
         
         if results:
