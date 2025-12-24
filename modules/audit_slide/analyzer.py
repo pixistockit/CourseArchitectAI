@@ -83,6 +83,8 @@ class PptxAnalyzer:
         
         # --- DYNAMIC SETTINGS LOAD ---
         self.active_buffer = 0.0
+        self.custom_contrast = 0.0 # Default to 0 (Use Standard WCAG)
+
         json_config_path = os.path.join('data', 'config', 'llm_config.json')
         
         config_loaded = False
@@ -90,14 +92,22 @@ class PptxAnalyzer:
             try:
                 with open(json_config_path, 'r') as f:
                     user_config = json.load(f)
+                    
+                    # Load Buffer
                     if 'default_buffer' in user_config and str(user_config['default_buffer']).strip():
                         self.active_buffer = float(user_config['default_buffer'])
-                        config_loaded = True
+                    
+                    # Load Custom Contrast Ratio
+                    if 'contrast_ratio' in user_config and str(user_config['contrast_ratio']).strip():
+                        self.custom_contrast = float(user_config['contrast_ratio'])
+                        
+                    config_loaded = True
             except Exception as e:
                 print(f"⚠️ JSON Config Load Error: {e}")
 
         if not config_loaded:
             try:
+                # Legacy Fallback
                 if hasattr(config_module, 'default_buffer'):
                     self.active_buffer = float(config_module.default_buffer)
                 elif hasattr(config_module, 'BUFFER_ACTIVITY_SLIDE'):
@@ -444,7 +454,6 @@ class PptxAnalyzer:
             try: alt = shape.element.nvSpPr.cNvPr.get("descr", "")
             except: alt = ""
             if not alt: 
-                # --- FIXED: Added Shape Name for Context ---
                 slide_issues.append({"slide": slide_index, "check": "Accessibility - Alt Text", "shape_name": shape.name, "result": "FAIL", "details": f"Image '{shape.name}' is missing Alt Text."})
 
     def _check_fonts(self, shape, slide_index, slide_issues, is_ghost_title=False):
@@ -477,8 +486,7 @@ class PptxAnalyzer:
                 obj_rgb = rgb_pptx_to_tuple(shape.fill.fore_color.rgb)
                 bg_rgb = self._determine_real_background(shape, slide)
                 if bg_rgb in (BG_IS_IMAGE, BG_IS_TABLE):
-                    # Fixed in main loop to provide context
-                    return
+                    return # Handled in main loop
                 ratio = calculate_contrast_ratio(obj_rgb, bg_rgb)
                 if ratio < WCAG_MIN_GRAPHIC_RATIO:
                     slide_issues.append({"slide": slide_index, "check": "WCAG Graphic Contrast", "shape_name": shape.name, "result": "FAIL", "ratio": f"{ratio:.1f}:1", "details": f"Low contrast graphics. Ratio: {ratio:.1f}:1"})
@@ -501,7 +509,7 @@ class PptxAnalyzer:
             for run in paragraph.runs:
                 if not run.text.strip(): continue
                 
-                # --- FIXED: Only check font name if user has configured one ---
+                # --- FIXED: Only check font name if configured ---
                 if not font_error_logged and NOTES_FONT_NAME and NOTES_FONT_NAME.strip():
                     if run.font.name is None: raw_font_name = "+mn-lt" 
                     else: raw_font_name = run.font.name
@@ -548,9 +556,9 @@ class PptxAnalyzer:
 
         self._check_reading_order(slide, slide_index, slide_issues)
         
-        # --- FIXED: Use a set to prevent spamming the same error for one shape ---
+        # Prevent spamming duplicate "Text over Image" errors for same shape
         shapes_with_contrast_issues = set()
-        
+
         for shape in slide.shapes:
             if self._is_exempt_shape(shape): continue
             is_ghost = False 
@@ -589,6 +597,16 @@ class PptxAnalyzer:
                             
                             ratio = calculate_contrast_ratio(text_rgb, bg_rgb)
                             req = get_required_ratio(run)
+                            
+                            # --- FIXED: APPLY CUSTOM CONTRAST LIMIT (LOWERING THE BAR) ---
+                            if self.custom_contrast > 0:
+                                # Allow user to override 4.5 requirement with lower value (e.g. 4.22)
+                                # But keep 3.0 for large text unless custom is even lower
+                                if req == 4.5: 
+                                    req = self.custom_contrast
+                                elif req == 3.0 and self.custom_contrast < 3.0:
+                                    req = self.custom_contrast
+
                             if ratio < req:
                                 txt_hex = rgb_to_hex(text_rgb)
                                 bg_hex = rgb_to_hex(bg_rgb)
