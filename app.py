@@ -82,6 +82,65 @@ def is_analysis_stale(report_dir):
     
     return False
 
+# --- HELPER: CADENCE LOG GENERATOR ---
+def generate_cadence_log(audit_output_dir, slide_data):
+    """
+    Generates the 'AUDITSLIDE CADENCE & PACING LOG' in the report logs folder.
+    """
+    log_dir = os.path.join(audit_output_dir, 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+    log_file_path = os.path.join(log_dir, 'cadence_pacing.log')
+
+    header_fmt = "{:<5} | {:<40} | {:<5} | {:<25} | {}"
+    row_fmt    = "{:<5} | {:<40} | {:<5} | {:<25} | {}"
+    
+    output_lines = []
+    output_lines.append("AUDITSLIDE CADENCE & PACING LOG")
+    output_lines.append("=" * 120)
+    output_lines.append(header_fmt.format("SLIDE", "GAGNE EVENTS (DETECTED)", "TIME", "LOGIC TYPE", "SNIPPET"))
+    output_lines.append("-" * 120)
+
+    # Handle if slide_data is a List (convert to dict) or Dict
+    items = slide_data.items() if isinstance(slide_data, dict) else enumerate(slide_data, 1)
+
+    for slide_num, data in items:
+        # 1. Gagne Events
+        events = data.get('gagne_events', [])
+        event_str = ", ".join(events) if events else "UNTAGGED (No Header Found)"
+            
+        # 2. Timing Logic
+        is_skipped = data.get('is_funded_by_prev', False)
+        explicit_time = data.get('explicit_time_found', None)
+        
+        if is_skipped:
+            duration = 0
+            logic_type = "SKIPPED (Funded by prev)"
+        elif explicit_time is not None:
+            duration = explicit_time
+            logic_type = "FUNDED (Explicit Time)"
+        else:
+            # Word Count Fallback
+            txt = data.get('word_count_text', 0)
+            note = data.get('word_count_notes', 0)
+            duration = round((txt + note) / 130, 1) 
+            if duration < 0.5: duration = 0.5
+            logic_type = "ESTIMATED (Word Count)"
+
+        # 3. Snippet
+        notes = data.get('notes', '').strip()
+        snippet = (notes[:45] + '...') if len(notes) > 45 else "(No Notes)"
+        snippet = snippet.replace('\n', ' ').replace('\r', '')
+
+        output_lines.append(row_fmt.format(str(slide_num), event_str[:40], str(duration), logic_type, snippet))
+
+    try:
+        with open(log_file_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(output_lines))
+        return True
+    except Exception as e:
+        print(f"Error writing Cadence Log: {e}")
+        return False
+
 # --- HELPER: CACHE MANAGER ---
 def get_or_create_cached_report(report_id, template_name, output_filename, force_rebuild=False):
     """
@@ -318,9 +377,20 @@ def upload_file():
             project_name = request.form.get('project_name')
             json_path = os.path.join(audit_output_dir, 'audit_report.json')
             
-            if project_name and os.path.exists(json_path):
+            # --- POST-PROCESSING: PROJECT NAME & CADENCE LOG ---
+            if os.path.exists(json_path):
                 with open(json_path, 'r') as f: data = json.load(f)
-                data['summary']['project_name'] = project_name
+                
+                # 1. Update Project Name if provided
+                if project_name:
+                    data['summary']['project_name'] = project_name
+                
+                # 2. GENERATE CADENCE LOG (NEW)
+                # We pass the 'slide_content' dict and the output folder
+                slide_content = data.get('slide_content', {})
+                generate_cadence_log(audit_output_dir, slide_content)
+
+                # Save changes
                 with open(json_path, 'w') as f: json.dump(data, f, indent=4)
 
             return jsonify({"status": "success", "session_id": unique_id})
@@ -483,6 +553,13 @@ def reanalyze_deck(report_id):
             file.save(save_path)
             
             run_audit_slide(save_path, audit_output_dir)
+            
+            # --- RE-GENERATE CADENCE LOG ---
+            json_path = os.path.join(audit_output_dir, 'audit_report.json')
+            if os.path.exists(json_path):
+                with open(json_path, 'r') as f: data = json.load(f)
+                generate_cadence_log(audit_output_dir, data.get('slide_content', {}))
+            
             return jsonify({"status": "success", "message": "Re-analysis complete"})
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
