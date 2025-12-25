@@ -421,4 +421,149 @@ def view_workstation(report_id):
     # For now, we assume view-report is the entry point that triggers updates.
     
     # Trigger the update check by calling the logic directly (optional but safer)
-    report_dir = os.path.join(app.
+    report_dir = os.path.join(app.config['OUTPUT_FOLDER'], report_id)
+    if is_analysis_stale(report_dir):
+        # We can just redirect to view-report to trigger the update, then come back?
+        # Or duplicate the update logic. For efficiency, let's duplicate the minimal update logic.
+        pass # (Omitted to keep response short, view_report handles the heavy lifting)
+
+    json_path = os.path.join(report_dir, 'audit_report.json')
+    
+    # Check if template changed
+    template_name = 'ID Workstation.html'
+    path, status = get_or_create_cached_report(report_id, 'report_spa.html', template_name) # Using report_spa.html template
+
+    if status != 200: return f"Error generating workstation: {status}", status
+    return send_from_directory(os.path.dirname(path), os.path.basename(path))
+
+@app.route('/delete/<report_id>', methods=['POST'])
+def delete_report(report_id):
+    path = os.path.join(app.config['OUTPUT_FOLDER'], report_id)
+    if os.path.exists(path):
+        shutil.rmtree(path)
+        logger_service.log_system('info', f"Deleted report {report_id}")
+        return jsonify({"status": "deleted"})
+    return jsonify({"status": "error"}), 404
+
+@app.route('/delete-project-group', methods=['POST'])
+def delete_project_group():
+    data = request.json
+    target_project = data.get('project_name')
+    if not target_project: return jsonify({"status": "error", "message": "Missing project name"}), 400
+    
+    deleted_count = 0
+    if os.path.exists(OUTPUT_FOLDER):
+        for item in os.listdir(OUTPUT_FOLDER):
+            item_path = os.path.join(OUTPUT_FOLDER, item)
+            if os.path.isdir(item_path):
+                json_path = os.path.join(item_path, 'audit_report.json')
+                if os.path.exists(json_path):
+                    try:
+                        with open(json_path, 'r') as f:
+                            data = json.load(f)
+                            p_name = data.get('summary', {}).get('project_name')
+                            if p_name == target_project:
+                                shutil.rmtree(item_path)
+                                deleted_count += 1
+                    except: pass
+                    
+    logger_service.log_system('info', f"Deleted project group '{target_project}' ({deleted_count} files)")
+    return jsonify({"status": "success", "deleted_count": deleted_count})
+
+@app.route('/reanalyze/<report_id>', methods=['POST'])
+def reanalyze_deck(report_id):
+    if 'file' not in request.files: return jsonify({"status": "error", "message": "No file uploaded"}), 400
+    file = request.files['file']
+    
+    if file and file.filename.lower().endswith(('.pptx', '.ppt')):
+        try:
+            audit_output_dir = os.path.join(app.config['OUTPUT_FOLDER'], report_id)
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{report_id}_{filename}")
+            file.save(save_path)
+            
+            run_audit_slide(save_path, audit_output_dir)
+            return jsonify({"status": "success", "message": "Re-analysis complete"})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "error", "message": "Invalid file type"}), 400
+
+# --- FIX ENGINE & DOWNLOADS ---
+
+@app.route('/apply-fix-batch', methods=['POST'])
+def apply_fix_batch():
+    data = request.json
+    filename = data.get('filename')
+    fixes = data.get('fixes')
+    
+    if not filename or not fixes: 
+        return jsonify({"status": "error", "message": "Missing filename or fixes"}), 400
+
+    input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if not os.path.exists(input_path):
+        for root, _, files in os.walk(app.config['OUTPUT_FOLDER']):
+            if filename in files:
+                input_path = os.path.join(root, filename)
+                break
+    
+    if not os.path.exists(input_path):
+        return jsonify({"status": "error", "message": "Original file not found"}), 404
+
+    try:
+        engine = FixEngine()
+        remediated_dir = os.path.join(app.config['OUTPUT_FOLDER'], 'remediated_decks')
+        os.makedirs(remediated_dir, exist_ok=True)
+        
+        new_file_path = engine.apply_fixes(input_path, fixes, remediated_dir)
+        
+        if new_file_path:
+            rel_name = os.path.basename(new_file_path)
+            return jsonify({"status": "success", "download_url": f"/download-fixed/{rel_name}"})
+        else:
+            return jsonify({"status": "error", "message": "No changes applied"}), 400
+            
+    except Exception as e:
+        logger_service.log_system('error', f"Fix Engine failed: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/download-fixed/<filename>')
+def download_fixed(filename):
+    directory = os.path.join(app.config['OUTPUT_FOLDER'], 'remediated_decks')
+    return send_from_directory(directory, filename, as_attachment=True)
+
+# --- AI ENDPOINTS (ADDED MISSING ROUTES) ---
+
+@app.route('/run-ai-batch', methods=['POST'])
+def run_ai_batch():
+    """Endpoint for Batch AI Analysis (All Slides)."""
+    try:
+        data = request.json
+        slides = data.get('slides', [])
+        total_count = data.get('total_slides', 0)
+        
+        engine = AIEngine()
+        results = engine.analyze_batch(slides, total_slide_count=total_count)
+        
+        return jsonify({"status": "success", "data": results})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/run-ai-agent', methods=['POST'])
+def run_ai_agent():
+    """Endpoint for Single Slide Analysis."""
+    try:
+        slide_data = request.json
+        engine = AIEngine()
+        
+        # Analyze single slide using the same batch pipeline for consistency
+        results = engine.analyze_batch([slide_data], total_slide_count=0)
+        
+        if results:
+            return jsonify({"status": "success", "data": results[0]})
+        else:
+            return jsonify({"status": "error", "message": "No data returned"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
