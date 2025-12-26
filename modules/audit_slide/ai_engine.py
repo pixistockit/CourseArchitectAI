@@ -26,7 +26,8 @@ import boto3
 
 # --- RELATIVE IMPORTS ---
 from . import config as CFG
-from .prompts import get_batch_manager_prompt, get_batch_executor_prompt, get_research_query_prompt
+# FIXED: Added new prompt function to imports
+from .prompts import get_batch_manager_prompt, get_batch_executor_prompt, get_research_query_prompt, get_executive_summary_prompt, get_summary_research_query_prompt
 
 # --- LOGGING SETUP ---
 sys_logger = logging.getLogger('platform_system')
@@ -37,7 +38,7 @@ MODEL_MAPPING = {
     "AGENT_1": {
         "ANTHROPIC": "claude-3-sonnet-20240229",
         "AWS_BEDROCK": "anthropic.claude-3-haiku-20240307-v1:0",
-        "GEMINI": "gemini-2.0-flash-lite", 
+        "GEMINI": "gemini-2.5-flash-lite", 
         "GROQ": "openai/gpt-oss-20b",
         "MISTRALAI": "mistral-small-latest",
         "OPENAI": "gpt-5-nano"
@@ -45,7 +46,7 @@ MODEL_MAPPING = {
     "AGENT_2": {
         "ANTHROPIC": None,
         "AWS_BEDROCK": "anthropic.claude-3-sonnet-20240229-v1:0",
-        "GEMINI": "gemini-2.0-flash",
+        "GEMINI": "gemini-2.5-flash",
         "GROQ": "llama-3.3-70b-versatile",
         "MISTRALAI": "magistral-small-latest",
         "OPENAI": "gpt-4.1-mini"
@@ -53,7 +54,7 @@ MODEL_MAPPING = {
     "AGENT_3": {
         "ANTHROPIC": None,
         "AWS_BEDROCK": "amazon.nova-pro-v1:0",
-        "GEMINI": "gemini-2.0-flash",
+        "GEMINI": "gemini-2.5-flash",
         "GROQ": "llama-3.3-70b-versatile",
         "MISTRALAI": "magistral-medium-latest",
         "OPENAI": "gpt-5"
@@ -86,7 +87,23 @@ class AIEngine:
         self.config, self.brand_config = self._load_configs()
         self.tracker = TokenTracker()
         self.clients = {}
+        # Ensure directory exists before logger init
+        os.makedirs(os.path.join('data', 'logs'), exist_ok=True)
+        self._setup_debug_logging() 
         self.ai_context_prompt = self._load_context_file()
+
+    def _setup_debug_logging(self):
+        """Forces a FileHandler onto the audit_tool logger."""
+        log_path = os.path.join('data', 'logs', 'vector_db_debug.log')
+        # Remove existing handlers to prevent duplication/locking
+        if ai_logger.hasHandlers():
+            ai_logger.handlers.clear()
+            
+        file_handler = logging.FileHandler(log_path, encoding='utf-8')
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        ai_logger.addHandler(file_handler)
+        ai_logger.setLevel(logging.INFO)
 
     def _load_configs(self):
         llm_cfg_path = os.path.join('data', 'config', 'llm_config.json')
@@ -101,6 +118,58 @@ class AIEngine:
             with open(brand_cfg_path, 'r') as f: brand_cfg = json.load(f)
             
         return llm_cfg, brand_cfg
+    
+    # --- UPDATED: CONTEXT-AWARE EXECUTIVE SUMMARY ---
+    def generate_executive_summary(self, summary_data, report_id):
+        """
+        Generates a global summary enriched with Vector DB research AND Project Transcript.
+        """
+        ai_logger.info("Step 1: Preparing Context for Executive Summary...")
+        
+        # 1. Load Transcript for Content Context
+        transcript_path = os.path.join('data', 'reports', report_id, 'project_transcript.txt')
+        transcript_context = ""
+        if os.path.exists(transcript_path):
+            try:
+                with open(transcript_path, 'r') as f:
+                    # Read first 15,000 chars to avoid token limits but get good context
+                    transcript_context = f.read(15000) 
+                ai_logger.info(f"Loaded Transcript Context ({len(transcript_context)} chars)")
+            except Exception as e:
+                ai_logger.error(f"Failed to read transcript: {e}")
+
+        # 2. Ask AI to generate query based on Data + Transcript
+        q_sys, q_user = get_summary_research_query_prompt(summary_data)
+        search_query = self.execute_agent("AGENT_2", q_user, q_sys)
+        ai_logger.info(f" -> Generated Search Query: {search_query}")
+        
+        # 3. Query Vector DB
+        research_context = self.query_vector_db(search_query)
+        
+        # 4. Generate Final Report with ALL Contexts
+        ai_logger.info("Step 2: Generating Final Executive Dashboard...")
+        
+        # We need to update prompts.py to accept transcript_context
+        sys_prompt, user_msg = get_executive_summary_prompt(summary_data, research_context, transcript_context)
+        
+        summary_text = self.execute_agent("AGENT_2", user_msg, sys_prompt)
+        
+        # Clean up markdown code blocks
+        clean_text = summary_text.replace("```html", "").replace("```", "").strip()
+        
+        # FIX: Ensure section headers are wrapped in <h4> if the AI forgot them
+        # This catches lines like "PROJECT HEALTH" and wraps them
+        lines = clean_text.split('\n')
+        final_lines = []
+        for line in lines:
+            stripped = line.strip()
+            # If line is all caps, short, and not already wrapped
+            if stripped.isupper() and len(stripped) < 50 and not stripped.startswith('<h'):
+                final_lines.append(f"<h4>{stripped}</h4>")
+            else:
+                final_lines.append(line)
+        
+        return "\n".join(final_lines)
 
     def _load_context_file(self):
         ctx_path = os.path.join('modules', 'audit_slide', 'assets', 'system_instruction.txt')
@@ -108,7 +177,7 @@ class AIEngine:
             try:
                 with open(ctx_path, 'r') as f: return f.read().strip()
             except Exception as e: sys_logger.error(f"Failed to load system_instruction.txt: {e}")
-        return "You are an Instructional Design Auditor."
+        return "You are an Instructional Design Auditor. Analyze content for clarity, brevity, and impact."
 
     def get_client(self, provider):
         if provider in self.clients: return self.clients[provider]
@@ -150,7 +219,7 @@ class AIEngine:
             selected = self.config.get("agent_1_provider", "GEMINI")
         return selected
     
-    # --- VECTOR DATABASE LOOKUP (RESTORED) ---
+    # --- VECTOR DATABASE LOOKUP ---
     def query_vector_db(self, query_text):
         # 1. Credentials
         account_id = str(getattr(CFG, 'cf_account_id', "")).strip()
@@ -168,7 +237,8 @@ class AIEngine:
             return "Standard Best Practice: Maintain clarity."
 
         try:
-            ai_logger.info(f"AGENT_2: Embedding query...")
+            # Log the exact query
+            ai_logger.info(f"AGENT_2: Embedding query: '{query_text}'")
             
             # 3. Generate Embedding
             emb_url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/baai/bge-small-en-v1.5"
@@ -182,7 +252,7 @@ class AIEngine:
 
             # 4. Query Index
             query_url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/vectorize/indexes/{index_name}/query"
-            query_res = requests.post(query_url, headers={"Authorization": f"Bearer {v_token}"}, json={"vector": vector, "topK": 2, "returnMetadata": True})
+            query_res = requests.post(query_url, headers={"Authorization": f"Bearer {v_token}"}, json={"vector": vector, "topK": 5, "returnMetadata": True})
             
             if query_res.status_code != 200:
                 ai_logger.error(f"Vector DB Query Error: {query_res.text}")
@@ -195,7 +265,11 @@ class AIEngine:
                 return "No KB matches found."
 
             context = "\n".join([m.get('metadata', {}).get('text', '') for m in matches if m.get('metadata')])
+            
+            # --- FIXED: Log FULL context for troubleshooting ---
             ai_logger.info(f"AGENT_2 SUCCESS: Retrieved {len(matches)} nodes.")
+            ai_logger.info(f"=== FULL VECTOR CONTEXT START ===\n{context}\n=== FULL VECTOR CONTEXT END ===")
+            
             return context
 
         except Exception as e:
@@ -298,6 +372,7 @@ class AIEngine:
         start_time = time.time(); in_tokens, out_tokens = 0, 0; response_text = ""
         try:
             if provider == "GEMINI":
+                # FIXED: Standard SDK usage
                 model = client.GenerativeModel(model_name)
                 full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
                 res = model.generate_content(full_prompt)
@@ -309,22 +384,25 @@ class AIEngine:
             elif provider == "MISTRALAI":
                 msgs = [{"role": "user", "content": prompt}]
                 if system_instruction: msgs.insert(0, {"role": "system", "content": system_instruction})
+                
                 res = client.chat(model=model_name, messages=msgs)
-                response_text = res.choices[0].message.content
+                # FIX: Use safe extractor for Mistral
+                response_text = self.safe_extract_text(res.choices[0].message.content)
+                
                 if hasattr(res, 'usage'): in_tokens, out_tokens = res.usage.prompt_tokens, res.usage.completion_tokens
-            
+
             elif provider in ["OPENAI", "GROQ"]:
                 msgs = [{"role": "user", "content": prompt}]
                 if system_instruction: msgs.insert(0, {"role": "system", "content": system_instruction})
                 res = client.chat.completions.create(model=model_name, messages=msgs)
                 response_text = res.choices[0].message.content
                 if hasattr(res, 'usage'): in_tokens, out_tokens = res.usage.prompt_tokens, res.usage.completion_tokens
-            
+
             elif provider == "ANTHROPIC":
                 res = client.messages.create(model=model_name, max_tokens=4096, system=system_instruction or "", messages=[{"role": "user", "content": prompt}])
                 response_text = res.content[0].text
                 if hasattr(res, 'usage'): in_tokens, out_tokens = res.usage.input_tokens, res.usage.output_tokens
-            
+
             elif provider == "AWS_BEDROCK":
                 body = json.dumps({"prompt": f"\n\nHuman: {system_instruction}\n{prompt}\n\nAssistant:", "max_tokens_to_sample": 4096})
                 res = client.invoke_model(body=body, modelId=model_name)
@@ -340,14 +418,24 @@ class AIEngine:
 
     def _clean_json(self, text):
         if not text: return {"error": "No response"}
+        
+        # 1. Strip Markdown
         clean = re.sub(r'```json\s*|```', '', text).strip()
+        
+        # 2. Sanitize Control Characters
         clean = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', clean)
+
         try: 
             return json.loads(clean)
-        except json.JSONDecodeError:
-            match = re.search(r'\[.*\]', clean, re.DOTALL) or re.search(r'\{.*\}', clean, re.DOTALL)
-            if match:
-                try: return json.loads(match.group(0))
-                except json.JSONDecodeError: pass
+        except:
+            # Fallback regex extraction
+            match_obj = re.search(r'(\{.*\})', clean, re.DOTALL)
+            match_list = re.search(r'(\[.*\])', clean, re.DOTALL)
+            try:
+                if match_list: return json.loads(match_list.group(1))
+                if match_obj: return json.loads(match_obj.group(1))
+            except:
+                pass # Failed even with regex
+            
             ai_logger.error(f"JSON Parse Failed. Raw text sample: {clean[:200]}")
             return []
