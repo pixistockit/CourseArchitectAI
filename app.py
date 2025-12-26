@@ -86,13 +86,14 @@ def is_analysis_stale(report_dir):
 def generate_cadence_log(audit_output_dir, slide_data):
     """
     Generates the 'AUDITSLIDE CADENCE & PACING LOG' in the report logs folder.
+    Uses pre-calculated metrics from Analyzer.py.
     """
     log_dir = os.path.join(audit_output_dir, 'logs')
     os.makedirs(log_dir, exist_ok=True)
     log_file_path = os.path.join(log_dir, 'cadence_pacing.log')
 
-    header_fmt = "{:<5} | {:<40} | {:<5} | {:<25} | {}"
-    row_fmt    = "{:<5} | {:<40} | {:<5} | {:<25} | {}"
+    header_fmt = "{:<5} | {:<40} | {:<5} | {:<30} | {}"
+    row_fmt    = "{:<5} | {:<40} | {:<5} | {:<30} | {}"
     
     output_lines = []
     output_lines.append("AUDITSLIDE CADENCE & PACING LOG")
@@ -100,38 +101,37 @@ def generate_cadence_log(audit_output_dir, slide_data):
     output_lines.append(header_fmt.format("SLIDE", "GAGNE EVENTS (DETECTED)", "TIME", "LOGIC TYPE", "SNIPPET"))
     output_lines.append("-" * 120)
 
-    # Handle if slide_data is a List (convert to dict) or Dict
+    running_total_time = 0
+
+    # Ensure we handle slide_data whether it's a dict or list
     items = slide_data.items() if isinstance(slide_data, dict) else enumerate(slide_data, 1)
 
     for slide_num, data in items:
-        # 1. Gagne Events
+        # 1. Gagne Events (Pre-calculated in Analyzer)
         events = data.get('gagne_events', [])
-        event_str = ", ".join(events) if events else "UNTAGGED (No Header Found)"
+        event_str = ", ".join(events) if events else "UNTAGGED"
             
-        # 2. Timing Logic
-        is_skipped = data.get('is_funded_by_prev', False)
-        explicit_time = data.get('explicit_time_found', None)
+        # 2. Timing Logic (READ FROM ANALYZER)
+        # We default to 0.5 only if the analyzer failed to run logic
+        duration = data.get('calculated_duration', 0.5)
+        logic_type = data.get('pacing_logic_type', "ESTIMATED (Fallback)")
         
-        if is_skipped:
-            duration = 0
-            logic_type = "SKIPPED (Funded by prev)"
-        elif explicit_time is not None:
-            duration = explicit_time
-            logic_type = "FUNDED (Explicit Time)"
-        else:
-            # Word Count Fallback
-            txt = data.get('word_count_text', 0)
-            note = data.get('word_count_notes', 0)
-            duration = round((txt + note) / 130, 1) 
-            if duration < 0.5: duration = 0.5
-            logic_type = "ESTIMATED (Word Count)"
+        # Round for display
+        duration_display = str(round(float(duration), 1))
+        
+        running_total_time += float(duration)
 
         # 3. Snippet
         notes = data.get('notes', '').strip()
         snippet = (notes[:45] + '...') if len(notes) > 45 else "(No Notes)"
         snippet = snippet.replace('\n', ' ').replace('\r', '')
 
-        output_lines.append(row_fmt.format(str(slide_num), event_str[:40], str(duration), logic_type, snippet))
+        output_lines.append(row_fmt.format(str(slide_num), event_str[:40], duration_display, logic_type, snippet))
+
+    # Footer
+    output_lines.append("-" * 120)
+    output_lines.append(f"CALCULATED TOTAL DURATION: {round(running_total_time, 1)} Minutes")
+    output_lines.append("=" * 120)
 
     try:
         with open(log_file_path, 'w', encoding='utf-8') as f:
@@ -641,6 +641,38 @@ def run_ai_agent():
             return jsonify({"status": "error", "message": "No data returned"}), 500
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+@app.route('/run-executive-summary/<report_id>', methods=['POST'])
+def run_executive_summary(report_id):
+    logger_service.log_audit(report_id, 'info', "User requested AI Executive Summary", agent="API")
+    
+    json_path = os.path.join(app.config['OUTPUT_FOLDER'], report_id, 'audit_report.json')
+    if not os.path.exists(json_path):
+        return jsonify({"status": "error", "message": "Report not found"}), 404
+        
+    try:
+        # Load existing data
+        with open(json_path, 'r') as f:
+            full_data = json.load(f)
+            
+        # Initialize AI
+        ai_engine = AIEngine()
+        
+        # --- FIXED: Pass report_id so AI can find project_transcript.txt ---
+        summary_text = ai_engine.generate_executive_summary(full_data['summary'], report_id)
+        
+        # Save back to JSON
+        full_data['executive_summary'] = summary_text
+        with open(json_path, 'w') as f:
+            json.dump(full_data, f, indent=4)
+            
+        logger_service.log_audit(report_id, 'info', "Executive Summary generated and saved.", agent="AI_ENGINE")
+        
+        return jsonify({"status": "success", "summary": summary_text})
+        
+    except Exception as e:
+        logger_service.log_system('error', f"Failed to run exec summary: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500  
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
