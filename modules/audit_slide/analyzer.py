@@ -187,6 +187,7 @@ class PptxAnalyzer:
         return bool(re.search(r'gain\s*attention|inform\s*objectives|stimulate\s*recall|present\s*content|provide\s*guidance|elicit\s*performance|provide\s*feedback|assess\s*performance|enhance\s*retention', t))
 
     def _calculate_cadence_metrics(self):
+        # 1. Reset Metrics
         for k in self.gagne_metrics: 
             self.gagne_metrics[k] = 0
             self.gagne_time_distribution[k] = 0.0
@@ -197,13 +198,19 @@ class PptxAnalyzer:
         self.current_section = {"name": "Introduction", "planned": 0, "estimated": 0, "projected": 0, "slide_count": 0}
 
         active_funded_activity = "" 
+        last_notes_signature = "" 
 
+        # 2. Iterate Through Slides
         for slide in self.slide_content_map:
+            # Data Extraction
             notes = (slide['notes'] or "")
             full_text = (slide['full_text'] or "").lower()
             title = (slide['title'] or "")
             layout_name = slide['visual_context']['layout'].lower()
+            
+            current_notes_signature = notes.strip().lower()
 
+            # Section Logic
             is_section_break = "section" in layout_name or "agenda" in layout_name or "divider" in layout_name
             if not is_section_break and re.match(r'\d+\.\d+\.\d+', title):
                 is_section_break = True
@@ -215,42 +222,76 @@ class PptxAnalyzer:
                 section_name = title if title else f"Section {slide['slide_number']}"
                 self.current_section = {"name": section_name, "planned": 0, "estimated": 0, "projected": 0, "slide_count": 0}
 
-            explicit_time = 0
-            time_match = re.search(r'(?:time|duration):\s*(\d+)', notes.lower())
-            if time_match: explicit_time = int(time_match.group(1))
+            # Explicit Time Detection (DECIMAL SUPPORT)
+            explicit_time = 0.0
+            time_match = re.search(r'(?:time|duration):\s*(\d+(?:\.\d+)?)', notes.lower())
+            if time_match: explicit_time = float(time_match.group(1))
 
+            # Activity Detection
             act_match = re.search(r'activity:\s*([^\n]+)', notes.lower())
             current_activity = act_match.group(1).strip().lower() if act_match else ""
 
             detected_events = self._map_gagne_event(notes, title)
             is_interactive = any(ev in ["Provide Guidance", "Elicit Performance", "Assess Performance"] for ev in detected_events)
 
+            # --- DURATION CALCULATION ---
             slide_time = 0
+            logic_reason = "ESTIMATED (Word Count)" 
             
             if explicit_time > 0:
-                slide_time = explicit_time
-                active_funded_activity = current_activity
+                # LOGIC: Trust the Header unless it is an EXACT Duplicate Slide
+                is_duplicate_slide = (current_notes_signature == last_notes_signature and len(current_notes_signature) > 10)
+                
+                if is_duplicate_slide:
+                    # Case 1: Exact Content Duplicate
+                    slide_time = 0
+                    logic_reason = "SKIPPED (Duplicate Slide)"
+                else:
+                    # Case 2: New Block (Trust the Header)
+                    slide_time = explicit_time
+                    active_funded_activity = current_activity
+                    logic_reason = "FUNDED (Explicit Time)"
+
             else:
+                # No Time Header Found
                 if current_activity and current_activity == active_funded_activity:
                     slide_time = 0
+                    logic_reason = "SKIPPED (Funded by prev)"
                 else:
+                    # Fallback to Word Count
                     word_count = len((notes + " " + full_text).split())
                     word_count_time = max(0.5, word_count / 130)
                     
                     if is_interactive and current_activity and self.active_buffer > 0:
                         slide_time = max(word_count_time, self.active_buffer)
+                        logic_reason = f"BUFFERED ({self.active_buffer}m Interactive)"
                     else:
                         slide_time = word_count_time
                     
                     active_funded_activity = "" 
 
-            self.pacing_data["total_planned_mins"] += explicit_time
+            # Update State
+            last_notes_signature = current_notes_signature
+
+            # --- SAVE TO SLIDE OBJECT ---
+            slide['calculated_duration'] = slide_time
+            slide['pacing_logic_type'] = logic_reason
+            slide['gagne_events'] = detected_events 
+
+            # --- AGGREGATION FIX ---
+            # Total Planned should ONLY include slides that were explicitly funded
+            if explicit_time > 0:
+                self.pacing_data["total_planned_mins"] += slide_time # Use smart time, not raw explicit_time
+            
+            # Total Projected includes everything (planned + estimates)
             self.pacing_data["total_projected_mins"] += slide_time
             
             self.current_section["slide_count"] += 1
             self.current_section["projected"] += slide_time
-            self.current_section["planned"] += explicit_time
+            if explicit_time > 0:
+                self.current_section["planned"] += slide_time
 
+            # Gagne Metrics
             if detected_events:
                 total_weight = 0
                 weights = {}
@@ -268,11 +309,40 @@ class PptxAnalyzer:
             else:
                 self.gagne_metrics["Other"] += 1
 
+        # Capture Final Section
         if self.current_section["slide_count"] > 0:
             self.pacing_data["sections"].append(self.current_section)
 
     def export_cadence_log(self, output_dir):
-        pass
+        log_path = os.path.join(output_dir, "cadence_log.txt")
+        try:
+            with open(log_path, "w", encoding="utf-8") as f:
+                f.write("AUDITSLIDE CADENCE & PACING LOG\n")
+                f.write("========================================================================================================================\n")
+                f.write(f"{'SLIDE':<5} | {'GAGNE EVENTS (DETECTED)':<40} | {'TIME':<5} | {'LOGIC TYPE':<30} | {'SNIPPET'}\n")
+                f.write("------------------------------------------------------------------------------------------------------------------------\n")
+                
+                total_calc = 0
+                for slide in self.slide_content_map:
+                    s_num = slide['slide_number']
+                    events = ", ".join(slide.get('gagne_events', [])) or "UNTAGGED"
+                    if len(events) > 40: events = events[:37] + "..."
+                    
+                    time_val = slide.get('calculated_duration', 0)
+                    total_calc += time_val
+                    
+                    logic = slide.get('pacing_logic_type', 'Unknown')
+                    
+                    snippet = (slide['notes'] or "").replace('\n', ' ')
+                    if len(snippet) > 50: snippet = snippet[:47] + "..."
+                    
+                    f.write(f"{s_num:<5} | {events:<40} | {time_val:<5.1f} | {logic:<30} | {snippet}\n")
+                
+                f.write("------------------------------------------------------------------------------------------------------------------------\n")
+                f.write(f"CALCULATED TOTAL DURATION: {total_calc:.1f} Minutes\n")
+                f.write("========================================================================================================================\n")
+        except Exception as e:
+            print(f"Failed to write cadence log: {e}")
 
     # ... (Helpers) ...
     def _extract_slide_text_content(self, slide):
@@ -663,7 +733,8 @@ class PptxAnalyzer:
                 "executive_metrics": {
                     "wcag_compliance_rate": score,
                     "slides_present_content": f"{self.gagne_metrics['Present Content']} ({round(self.gagne_time_distribution['Present Content'], 1)}%)",
-                    "slides_elicit_performance": f"{self.gagne_metrics['Elicit Performance']} ({round(self.gagne_time_distribution['Elicit Performance'], 1)}%)"
+                    "slides_elicit_performance": f"{self.gagne_metrics['Elicit Performance']} ({round(self.gagne_time_distribution['Elicit Performance'], 1)}%)",
+                    "gagne_breakdown": self.gagne_time_distribution # Pass the minutes map to frontend
                 },
                 "content_metrics": {
                     "reading_complexity_fails": reading_fails,
