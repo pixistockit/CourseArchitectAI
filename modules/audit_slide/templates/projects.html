@@ -13,7 +13,7 @@
             <input type="text" id="project-search" class="form-input" placeholder="Search projects..." style="padding-left: 35px; width: 250px;" onkeyup="filterProjects(this.value)">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         </div>
-        <a href="{{ url_for('new_audit') }}" class="btn btn-primary">
+        <a href="{{ url_for('audit_slide.new_audit') }}" class="btn btn-primary">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             <span>New Audit</span>
         </a>
@@ -68,10 +68,10 @@
                             </td>
                             <td>{{ file.issues }}</td>
                             <td style="text-align:right; white-space: nowrap;">
-                                <button class="btn-action" title="View Executive Summary" onclick="window.open('{{ url_for('view_report', report_id=file.id) }}', '_blank')">
+                                <button class="btn-action" title="View Executive Summary" onclick="window.open('{{ url_for('audit_slide.view_report', report_id=file.id) }}', '_blank')">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
                                 </button>
-                                <button class="btn-action" title="Open ID Workstation" onclick="window.open('{{ url_for('view_workstation', report_id=file.id) }}', '_blank')">
+                                <button class="btn-action" title="Open ID Workstation" onclick="window.open('{{ url_for('audit_slide.view_workstation', report_id=file.id) }}', '_blank')">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                                 </button>
                                 <button class="btn-action" title="Print PDF Report" onclick="printReport('{{ file.id }}')">
@@ -92,7 +92,7 @@
         <div class="empty-state-card">
             <h3>No Projects Found</h3>
             <p>It looks like you haven't run any audits yet.</p>
-            <a href="{{ url_for('new_audit') }}" class="btn btn-primary" style="margin-top: 16px;">Start Your First Audit</a>
+            <a href="{{ url_for('audit_slide.new_audit') }}" class="btn btn-primary" style="margin-top: 16px;">Start Your First Audit</a>
         </div>
     {% endif %}
 </div>
@@ -121,17 +121,20 @@
     }
 
     function printReport(id) {
-        const url = `{{ url_for('view_report', report_id='PLACEHOLDER') }}`.replace('PLACEHOLDER', id) + '?print=true';
+        // UPDATED LINK: audit_slide.view_report
+        const url = `{{ url_for('audit_slide.view_report', report_id='PLACEHOLDER') }}`.replace('PLACEHOLDER', id) + '?print=true';
         window.open(url, '_blank');
     }
 
     function addAuditToFolder(groupName) {
-        window.location.href = `{{ url_for('new_audit') }}?project=${encodeURIComponent(groupName)}`;
+        // UPDATED LINK: audit_slide.new_audit
+        window.location.href = `{{ url_for('audit_slide.new_audit') }}?project=${encodeURIComponent(groupName)}`;
     }
 
     function deleteProjectGroup(groupName) {
         if(confirm(`⚠️ Are you sure you want to delete the ENTIRE folder "${groupName}"? This will delete all audits inside it.`)) {
-            fetch('/delete-project-group', {
+            // UPDATED LINK: audit_slide.delete_project_group
+            fetch("{{ url_for('audit_slide.delete_project_group') }}", {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ project_name: groupName })
@@ -152,7 +155,13 @@
                 if (!reportId) return; 
                 
                 if (confirm(`Are you sure you want to permanently delete this report?`)) {
-                    fetch(`/delete/${reportId}`, {
+                    // UPDATED LINK: audit_slide.delete_report
+                    // We construct the URL by stripping the placeholder if needed, or just appending
+                    // But easiest in JS is to trust the route structure if we know it, 
+                    // OR use the trick below to ensure we respect the blueprint path
+                    const baseUrl = "{{ url_for('audit_slide.delete_report', report_id='') }}";
+                    
+                    fetch(baseUrl + reportId, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' }
                     })
