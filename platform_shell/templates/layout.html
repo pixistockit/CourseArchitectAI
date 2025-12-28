@@ -179,7 +179,7 @@
     .nav-section-header { color: var(--slate-500); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 24px 16px 8px; white-space: nowrap; }
     
     /* --- UTILITY & SHARED COMPONENTS --- */
-    .page-header { margin-bottom: 32px; }
+    .page-header { margin-bottom: 32px; margin-left: 90px; }
     .page-title { font-family: var(--font-headers); font-size: 2rem; font-weight: 800; color: var(--primary-navy); margin-bottom: 4px; }
     .page-subtitle { font-size: 1rem; color: var(--slate-500); }
 
@@ -316,6 +316,8 @@
             </div>
             <span class="sidebar-title">Precision Stack</span>
         </div>
+        
+        {% if current_user.is_authenticated %}
         <nav class="sidebar-nav">
             <a href="{{ url_for('index') }}" class="nav-link {{ 'active' if active_page == 'dashboard' else '' }}">
                 <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
@@ -324,18 +326,24 @@
 
             <div class="nav-section-header">Modules</div>
             
-            <a href="{{ url_for('projects_page') }}" class="nav-link {{ 'active' if active_page == 'projects' else '' }}">
+            <a href="{{ url_for('audit_slide.projects_page') }}" class="nav-link {{ 'active' if active_page == 'projects' else '' }}">
                 <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                 <span>AuditSlide</span>
             </a>
 
             <div class="nav-section-header">Platform</div>
 
-            <a href="{{ url_for('settings') }}" class="nav-link {{ 'active' if active_page == 'settings' else '' }}">
+            <a href="{{ url_for('audit_slide.settings') }}" class="nav-link {{ 'active' if active_page == 'settings' else '' }}">
                 <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 <span>Settings</span>
             </a>
+            
+            <a href="{{ url_for('auth.logout') }}" class="nav-link">
+                <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                <span>Logout</span>
+            </a>
         </nav>
+        {% endif %}
     </aside>
 
     <div id="sidebar-floater" title="Open Navigation">
