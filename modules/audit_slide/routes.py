@@ -17,7 +17,7 @@ from flask_login import login_required, current_user
 
 # --- MODULE IMPORTS ---
 from .qa_tool import run_audit_slide
-from .ai_engine import AIEngine
+from services.ai_engine import AIEngine
 from .fix_engine import FixEngine
 from .analyzer import PptxAnalyzer 
 from . import config as CFG 
