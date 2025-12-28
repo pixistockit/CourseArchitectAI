@@ -11,7 +11,7 @@ import importlib
 import re
 from datetime import datetime
 
-from flask import Blueprint, render_template, request, url_for, send_from_directory, jsonify, redirect, current_app
+from flask import Blueprint, render_template, request, url_for, send_from_directory, jsonify, redirect, current_app, flash
 from werkzeug.utils import secure_filename
 from flask_login import login_required, current_user
 
@@ -19,7 +19,6 @@ from flask_login import login_required, current_user
 from .qa_tool import run_audit_slide
 from .ai_engine import AIEngine
 from .fix_engine import FixEngine
-# Import Analyzer class directly for re-runs
 from .analyzer import PptxAnalyzer 
 from . import config as CFG 
 
@@ -28,31 +27,39 @@ from extensions import db
 import models
 
 # --- LOGGING ---
-# We will use the system logger service defined in the main app context or standard logging
-# For module consistency, we'll get the 'platform_system' logger
-import logging
 logger = logging.getLogger('platform_system')
 
 # --- BLUEPRINT DEFINITION ---
 audit_bp = Blueprint('audit_slide', __name__, template_folder='templates')
 
-# --- HELPER FUNCTIONS (Specific to AuditSlide Logic) ---
+# ==========================================
+# --- HELPER FUNCTIONS ---
+# ==========================================
+
+def get_paths():
+    """
+    Safely retrieves upload/output paths from config, defaulting if missing.
+    Prevents KeyError crashes.
+    """
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    
+    upload = current_app.config.get('UPLOAD_FOLDER', os.path.join(base_dir, 'data', 'uploads'))
+    output = current_app.config.get('OUTPUT_FOLDER', os.path.join(base_dir, 'data', 'reports'))
+    
+    # Ensure they exist
+    os.makedirs(upload, exist_ok=True)
+    os.makedirs(output, exist_ok=True)
+    
+    return upload, output
 
 def is_analysis_stale(report_dir):
-    """
-    Checks if the generated JSON report is older than the code or configuration.
-    """
+    """Checks if the generated JSON report is older than the code/config."""
     json_path = os.path.join(report_dir, 'audit_report.json')
     if not os.path.exists(json_path): return True
 
     json_mtime = os.path.getmtime(json_path)
-    
-    # We need to construct paths relative to the current application root
-    base_dir = current_app.root_path # This points to the app folder
+    base_dir = current_app.root_path
     config_dir = os.path.join(base_dir, 'data', 'config')
-
-    # List of critical files that affect the analysis logic
-    # Note: We check files relative to where the code lives
     module_path = os.path.dirname(os.path.abspath(__file__))
     
     dependencies = [
@@ -66,14 +73,11 @@ def is_analysis_stale(report_dir):
     for dep in dependencies:
         if os.path.exists(dep):
             if os.path.getmtime(dep) > json_mtime:
-                # print(f"🔄 Auto-Update Triggered: {os.path.basename(dep)} is newer.")
                 return True
     return False
 
 def generate_cadence_log(audit_output_dir, slide_data):
-    """
-    Generates the 'AUDITSLIDE CADENCE & PACING LOG' in the report logs folder.
-    """
+    """Generates the 'AUDITSLIDE CADENCE & PACING LOG'."""
     log_dir = os.path.join(audit_output_dir, 'logs')
     os.makedirs(log_dir, exist_ok=True)
     log_file_path = os.path.join(log_dir, 'cadence_pacing.log')
@@ -84,29 +88,23 @@ def generate_cadence_log(audit_output_dir, slide_data):
     output_lines = ["AUDITSLIDE CADENCE & PACING LOG", "=" * 120, header_fmt.format("SLIDE", "GAGNE EVENTS", "TIME", "LOGIC TYPE", "SNIPPET"), "-" * 120]
     running_total_time = 0
 
-    # Ensure we handle slide_data whether it's a dict or list
     items = slide_data.items() if isinstance(slide_data, dict) else enumerate(slide_data, 1)
 
     for slide_num, data in items:
-        # 1. Gagne Events
         events = data.get('gagne_events', [])
         event_str = ", ".join(events) if events else "UNTAGGED"
-            
-        # 2. Timing Logic
         duration = data.get('calculated_duration', 0.5)
         logic_type = data.get('pacing_logic_type', "ESTIMATED (Fallback)")
         
         duration_display = str(round(float(duration), 1))
         running_total_time += float(duration)
-
-        # 3. Snippet
+        
         notes = data.get('notes', '').strip()
         snippet = (notes[:45] + '...') if len(notes) > 45 else "(No Notes)"
         snippet = snippet.replace('\n', ' ').replace('\r', '')
 
         output_lines.append(row_fmt.format(str(slide_num), event_str[:40], duration_display, logic_type, snippet))
 
-    # Footer
     output_lines.append("-" * 120)
     output_lines.append(f"CALCULATED TOTAL DURATION: {round(running_total_time, 1)} Minutes")
     output_lines.append("=" * 120)
@@ -116,28 +114,21 @@ def generate_cadence_log(audit_output_dir, slide_data):
             f.write('\n'.join(output_lines))
         return True
     except Exception as e:
-        print(f"Error writing Cadence Log: {e}")
+        logger.error(f"Error writing Cadence Log: {e}")
         return False
 
 def get_or_create_cached_report(report_id, template_name, output_filename, force_rebuild=False):
-    """
-    Ensures static HTML reports are generated and up-to-date.
-    """
-    output_folder = current_app.config['OUTPUT_FOLDER']
+    """Ensures static HTML reports are generated and up-to-date."""
+    _, output_folder = get_paths()
     report_dir = os.path.join(output_folder, report_id)
     json_path = os.path.join(report_dir, 'audit_report.json')
     cached_path = os.path.join(report_dir, output_filename)
-    
-    # We find the template within this blueprint's template folder
-    # Note: Flask finds templates in the blueprint folder automatically if configured, 
-    # but for raw file reading we need the path.
     template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates', template_name)
 
     if not (os.path.exists(json_path) and os.path.exists(template_path)):
         return None, 404
 
     needs_rebuild = force_rebuild
-    
     if not needs_rebuild:
         if not os.path.exists(cached_path):
             needs_rebuild = True
@@ -146,67 +137,56 @@ def get_or_create_cached_report(report_id, template_name, output_filename, force
                 cache_mtime = os.path.getmtime(cached_path)
                 data_mtime = os.path.getmtime(json_path)
                 template_mtime = os.path.getmtime(template_path)
-                
                 if data_mtime > cache_mtime or template_mtime > cache_mtime:
                     needs_rebuild = True
-            except Exception as e:
-                needs_rebuild = True
+            except: needs_rebuild = True
 
     if needs_rebuild:
         try:
-            with open(template_path, 'r', encoding='utf-8') as f: 
-                html_template = f.read()
-            with open(json_path, 'r', encoding='utf-8') as f: 
-                full_data = json.load(f)
+            with open(template_path, 'r', encoding='utf-8') as f: html_template = f.read()
+            with open(json_path, 'r', encoding='utf-8') as f: full_data = json.load(f)
             
             json_str = json.dumps(full_data)
             final_html = html_template.replace('/* INSERT_JSON_HERE */', f"const auditData = {json_str};")
             
-            with open(cached_path, 'w', encoding='utf-8') as f: 
-                f.write(final_html)
+            with open(cached_path, 'w', encoding='utf-8') as f: f.write(final_html)
         except Exception as e:
             return None, 500
 
     return cached_path, 200
 
-
+# ==========================================
 # --- ROUTES ---
+# ==========================================
 
 @audit_bp.route('/projects')
 @login_required
 def projects_page():
+    """
+    Lists all audit projects for the current user.
+    Loads primarily from Database for speed and security.
+    """
     logger.info(f"Projects page accessed by {current_user.email}")
-    projects = {} 
     
-    # File Scan for Projects 
-    output_folder = current_app.config['OUTPUT_FOLDER']
-    if os.path.exists(output_folder):
-        for item in os.listdir(output_folder):
-            item_path = os.path.join(output_folder, item)
-            if os.path.isdir(item_path):
-                json_path = os.path.join(item_path, 'audit_report.json')
-                if os.path.exists(json_path):
-                    try:
-                        with open(json_path, 'r') as f: data = json.load(f)
-                        summary = data.get('summary', {})
-                        p_name = summary.get('project_name') or summary.get('presentation_name', 'Unsorted Projects')
-                        file_data = {
-                            'id': item, 'filename': summary.get('presentation_name', 'Unknown'),
-                            'date': summary.get('date_generated', '')[:10],
-                            'score': summary.get('executive_metrics', {}).get('wcag_compliance_rate', 0),
-                            'issues': summary.get('total_errors', 0)
-                        }
-                        if p_name not in projects: projects[p_name] = []
-                        projects[p_name].append(file_data)
-                    except Exception as e:
-                        pass
+    # DB Load
+    user_projects = models.Project.query.filter_by(user_id=current_user.id).order_by(models.Project.created_at.desc()).all()
     
-    for p in projects: projects[p].sort(key=lambda x: x['date'], reverse=True)
-    return render_template('projects.html', projects=projects, active_page='projects')
+    return render_template('projects.html', active_page='projects', projects=user_projects)
 
 @audit_bp.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
+    """
+    Handles file upload, runs analysis, and saves to DB.
+    Includes GATEKEEPER logic to restrict Free users.
+    """
+    # 1. GATEKEEPER CHECK (SaaS Security)
+    allowed_tiers = ['pro', 'enterprise']
+    if current_user.subscription_tier not in allowed_tiers:
+        logger.warning(f"Access Denied: User {current_user.email} (Tier: {current_user.subscription_tier}) tried to upload.")
+        return jsonify({"status": "error", "message": "Access Restricted. Please upgrade to Pro or Enterprise."}), 403
+
+    # 2. File Validation
     if 'file' not in request.files: return jsonify({"status": "error", "message": "No file uploaded"}), 400
     file = request.files['file']
     if file.filename == '': return jsonify({"status": "error", "message": "No file selected"}), 400
@@ -214,34 +194,40 @@ def upload_file():
     if file and file.filename.lower().endswith(('.pptx', '.ppt')):
         try:
             filename = secure_filename(file.filename)
-            unique_id = str(uuid.uuid4())
-            save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            unique_id = str(uuid.uuid4()) # Generate Project ID
+            
+            upload_folder, output_folder = get_paths()
+            
+            # Save Path
+            save_path = os.path.join(upload_folder, filename)
             file.save(save_path)
             
-            audit_output_dir = os.path.join(current_app.config['OUTPUT_FOLDER'], unique_id)
+            # Output Directory
+            audit_output_dir = os.path.join(output_folder, unique_id)
             os.makedirs(audit_output_dir, exist_ok=True)
             
             logger.info(f"Starting audit for {filename} ({unique_id})")
             
+            # 3. RUN ANALYSIS
             run_audit_slide(save_path, audit_output_dir)
             
+            # 4. POST-PROCESSING
             project_name = request.form.get('project_name')
             json_path = os.path.join(audit_output_dir, 'audit_report.json')
             
-            # --- POST-PROCESSING & HYBRID SAVE ---
             if os.path.exists(json_path):
                 with open(json_path, 'r') as f: data = json.load(f)
                 
-                # 1. Update JSON File
+                # Update JSON Metadata
                 if project_name: data['summary']['project_name'] = project_name
                 generate_cadence_log(audit_output_dir, data.get('slide_content', {}))
                 with open(json_path, 'w') as f: json.dump(data, f, indent=4)
 
-                # 2. SAVE TO DATABASE (Hybrid Redundancy)
+                # 5. SAVE TO DATABASE (Hybrid Persistence)
                 try:
                     new_project = models.Project(
                         id=unique_id,
-                        user_id=current_user.id, # Link to the logged-in user
+                        user_id=current_user.id,
                         project_name=project_name or data['summary']['presentation_name'],
                         module_type='audit_slide',
                         filename=filename,
@@ -261,37 +247,35 @@ def upload_file():
         except Exception as e:
             logger.error(f"Audit failed: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
+            
     return jsonify({"status": "error", "message": "Invalid file type. Only .pptx allowed."}), 400
 
 @audit_bp.route('/new-audit')
 @login_required
 def new_audit():
-    existing_projects = set()
-    output_folder = current_app.config['OUTPUT_FOLDER']
-    if os.path.exists(output_folder):
-        for item in os.listdir(output_folder):
-            json_path = os.path.join(output_folder, item, 'audit_report.json')
-            if os.path.exists(json_path):
-                try:
-                    with open(json_path, 'r') as f: data = json.load(f)
-                    p = data.get('summary', {}).get('project_name')
-                    if p: existing_projects.add(p)
-                except: pass
-    
+    # Load defaults for the settings dropdown
     config_dir = os.path.join(current_app.root_path, 'data', 'config')
-    llm_config_path = os.path.join(config_dir, 'llm_config.json'); defaults = {}
+    llm_config_path = os.path.join(config_dir, 'llm_config.json')
+    defaults = {}
     if os.path.exists(llm_config_path):
         with open(llm_config_path, 'r') as f: defaults = json.load(f)
-    return render_template('new_audit.html', active_page='projects', existing_projects=sorted(list(existing_projects)), defaults=defaults)
+        
+    return render_template('new_audit.html', active_page='projects', defaults=defaults)
 
 @audit_bp.route('/view-report/<report_id>')
 @login_required
 def view_report(report_id):
-    output_folder = current_app.config['OUTPUT_FOLDER']
+    # Verify ownership via DB to prevent Unauthorized Access
+    project = models.Project.query.filter_by(id=report_id, user_id=current_user.id).first()
+    if not project:
+        flash('Project not found or access denied.', 'error')
+        return redirect(url_for('audit_slide.projects_page'))
+
+    upload_folder, output_folder = get_paths()
     report_dir = os.path.join(output_folder, report_id)
     json_path = os.path.join(report_dir, 'audit_report.json')
     
-    # 1. Logic Stale Check
+    # 1. Stale Logic Check & Auto-Update
     force_rebuild = False
     if os.path.exists(json_path) and is_analysis_stale(report_dir):
         logger.info(f"Report {report_id} is stale. Re-running logic...")
@@ -299,13 +283,14 @@ def view_report(report_id):
             with open(json_path, 'r') as f: old_data = json.load(f)
             filename = old_data.get('summary', {}).get('presentation_name')
             if filename:
-                upload_folder = current_app.config['UPLOAD_FOLDER']
                 pptx_path = os.path.join(upload_folder, filename)
+                # Fallback search if exact path missing
                 if not os.path.exists(pptx_path):
                      matches = glob.glob(os.path.join(upload_folder, f"*{filename}"))
                      if matches: pptx_path = matches[0]
+                
                 if os.path.exists(pptx_path):
-                    # Import and Reload Logic to ensure fresh code
+                    # Reload Analyzer Module to catch code changes
                     import modules.audit_slide.analyzer
                     importlib.reload(modules.audit_slide.analyzer)
                     from modules.audit_slide.analyzer import PptxAnalyzer
@@ -318,9 +303,14 @@ def view_report(report_id):
                     new_data['summary']['project_name'] = old_data.get('summary', {}).get('project_name')
                     with open(json_path, 'w') as f: json.dump(new_data, f, indent=4)
                     force_rebuild = True
+                    
+                    # Update DB Record
+                    project.report_data = new_data
+                    db.session.commit()
         except Exception as e:
              logger.error(f"Auto-update failed: {e}")
 
+    # 2. Render Cached HTML
     path, status = get_or_create_cached_report(report_id, 'report.html', 'Printable Executive Summary.html', force_rebuild=force_rebuild)
     if status != 200: return f"Error: {status}", status
     return send_from_directory(os.path.dirname(path), os.path.basename(path))
@@ -328,37 +318,37 @@ def view_report(report_id):
 @audit_bp.route('/view-workstation/<report_id>')
 @login_required
 def view_workstation(report_id):
-    output_folder = current_app.config['OUTPUT_FOLDER']
-    json_path = os.path.join(output_folder, report_id, 'audit_report.json')
-    if not os.path.exists(json_path): return "Error: Audit report not found.", 404
-    try:
-        with open(json_path, 'r', encoding='utf-8') as f: audit_data = json.load(f)
-    except Exception as e:
-        return "Error: Could not load audit data.", 500
-    return render_template('workstation.html', active_page='projects', audit_data=audit_data)
+    project = models.Project.query.filter_by(id=report_id, user_id=current_user.id).first()
+    if not project or not project.report_data:
+        return "Error: Audit report not found or access denied.", 404
+        
+    return render_template('workstation.html', active_page='projects', audit_data=project.report_data)
 
 @audit_bp.route('/delete/<report_id>', methods=['POST'])
 @login_required
 def delete_report(report_id):
-    # 1. Delete from File System
-    output_folder = current_app.config['OUTPUT_FOLDER']
+    # Security: Ensure user owns this project
+    project = models.Project.query.filter_by(id=report_id, user_id=current_user.id).first()
+    if not project:
+        return jsonify({"status": "error", "message": "Project not found or access denied"}), 404
+
+    _, output_folder = get_paths()
     path = os.path.join(output_folder, report_id)
+    
+    # 1. Delete from File System
     if os.path.exists(path):
         shutil.rmtree(path)
         
     # 2. Delete from Database
     try:
-        project = models.Project.query.get(report_id)
-        if project:
-            db.session.delete(project)
-            db.session.commit()
-            logger.info(f"Deleted report {report_id} from DB and Disk")
-            return jsonify({"status": "deleted"})
+        db.session.delete(project)
+        db.session.commit()
+        logger.info(f"Deleted report {report_id} from DB and Disk")
+        return jsonify({"status": "deleted"})
     except Exception as e:
         db.session.rollback()
         logger.error(f"DB Deletion failed for {report_id}: {e}")
-        
-    return jsonify({"status": "error", "message": "Report not found in DB or Disk"}), 404
+        return jsonify({"status": "error", "message": "DB Error"}), 500
 
 @audit_bp.route('/delete-project-group', methods=['POST'])
 @login_required
@@ -369,18 +359,16 @@ def delete_project_group():
         return jsonify({"status": "error", "message": "Missing project name"}), 400
     
     deleted_count = 0
-    output_folder = current_app.config['OUTPUT_FOLDER']
+    _, output_folder = get_paths()
     
-    # 1. Database Bulk Delete
     try:
-        projects_to_delete = models.Project.query.filter_by(project_name=target_project).all()
+        # Delete only projects owned by current user
+        projects_to_delete = models.Project.query.filter_by(project_name=target_project, user_id=current_user.id).all()
         for proj in projects_to_delete:
-            # Delete the folder for this specific project ID
             path = os.path.join(output_folder, proj.id)
             if os.path.exists(path):
                 shutil.rmtree(path)
             
-            # Delete the DB Record
             db.session.delete(proj)
             deleted_count += 1
             
@@ -397,13 +385,16 @@ def delete_project_group():
 @audit_bp.route('/reanalyze/<report_id>', methods=['POST'])
 @login_required
 def reanalyze_deck(report_id):
+    # Security Check
+    project = models.Project.query.filter_by(id=report_id, user_id=current_user.id).first()
+    if not project: return jsonify({"status": "error", "message": "Access Denied"}), 403
+
     if 'file' not in request.files: return jsonify({"status": "error", "message": "No file uploaded"}), 400
     file = request.files['file']
     
     if file and file.filename.lower().endswith(('.pptx', '.ppt')):
         try:
-            output_folder = current_app.config['OUTPUT_FOLDER']
-            upload_folder = current_app.config['UPLOAD_FOLDER']
+            upload_folder, output_folder = get_paths()
             
             audit_output_dir = os.path.join(output_folder, report_id)
             filename = secure_filename(file.filename)
@@ -412,11 +403,15 @@ def reanalyze_deck(report_id):
             
             run_audit_slide(save_path, audit_output_dir)
             
-            # --- RE-GENERATE CADENCE LOG ---
+            # Refresh Logs and DB
             json_path = os.path.join(audit_output_dir, 'audit_report.json')
             if os.path.exists(json_path):
                 with open(json_path, 'r') as f: data = json.load(f)
                 generate_cadence_log(audit_output_dir, data.get('slide_content', {}))
+                
+                # Update DB
+                project.report_data = data
+                db.session.commit()
             
             return jsonify({"status": "success", "message": "Re-analysis complete"})
         except Exception as e:
@@ -433,10 +428,10 @@ def apply_fix_batch():
     if not filename or not fixes: 
         return jsonify({"status": "error", "message": "Missing filename or fixes"}), 400
 
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    output_folder = current_app.config['OUTPUT_FOLDER']
+    upload_folder, output_folder = get_paths()
     
     input_path = os.path.join(upload_folder, filename)
+    # Search fallback if not found directly
     if not os.path.exists(input_path):
         for root, _, files in os.walk(output_folder):
             if filename in files:
@@ -455,7 +450,7 @@ def apply_fix_batch():
         
         if new_file_path:
             rel_name = os.path.basename(new_file_path)
-            return jsonify({"status": "success", "download_url": f"/download-fixed/{rel_name}"})
+            return jsonify({"status": "success", "download_url": f"/modules/audit_slide/download-fixed/{rel_name}"})
         else:
             return jsonify({"status": "error", "message": "No changes applied"}), 400
             
@@ -466,7 +461,8 @@ def apply_fix_batch():
 @audit_bp.route('/download-fixed/<filename>')
 @login_required
 def download_fixed(filename):
-    directory = os.path.join(current_app.config['OUTPUT_FOLDER'], 'remediated_decks')
+    _, output_folder = get_paths()
+    directory = os.path.join(output_folder, 'remediated_decks')
     return send_from_directory(directory, filename, as_attachment=True)
 
 # --- AI ENDPOINTS ---
@@ -494,8 +490,6 @@ def run_ai_agent():
     try:
         slide_data = request.json
         engine = AIEngine()
-        
-        # Analyze single slide using the same batch pipeline for consistency
         results = engine.analyze_batch([slide_data], total_slide_count=0)
         
         if results:
@@ -508,31 +502,32 @@ def run_ai_agent():
 @audit_bp.route('/run-executive-summary/<report_id>', methods=['POST'])
 @login_required
 def run_executive_summary(report_id):
-    output_folder = current_app.config['OUTPUT_FOLDER']
+    # Verify Owner
+    project = models.Project.query.filter_by(id=report_id, user_id=current_user.id).first()
+    if not project: return jsonify({"status": "error", "message": "Access Denied"}), 403
+
+    _, output_folder = get_paths()
     json_path = os.path.join(output_folder, report_id, 'audit_report.json')
-    if not os.path.exists(json_path):
-        return jsonify({"status": "error", "message": "Report not found"}), 404
-        
+    
     try:
-        # Load existing data
-        with open(json_path, 'r') as f:
-            full_data = json.load(f)
-            
-        # Initialize AI
+        with open(json_path, 'r') as f: full_data = json.load(f)
         ai_engine = AIEngine()
-        
         summary_text = ai_engine.generate_executive_summary(full_data['summary'], report_id)
         
-        # Save back to JSON
+        # Save back to JSON and DB
         full_data['executive_summary'] = summary_text
-        with open(json_path, 'w') as f:
-            json.dump(full_data, f, indent=4)
+        with open(json_path, 'w') as f: json.dump(full_data, f, indent=4)
+        
+        project.report_data = full_data
+        db.session.commit()
             
         return jsonify({"status": "success", "summary": summary_text})
         
     except Exception as e:
         logger.error(f"Failed to run exec summary: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500  
+
+# --- SETTINGS ROUTES ---
 
 @audit_bp.route('/settings')
 @login_required
@@ -551,7 +546,7 @@ def settings():
     if os.path.exists(brand_config_path):
         with open(brand_config_path, 'r') as f: brand_config = json.load(f)
     
-    # Defaults
+    # Format Blacklist for Display
     llm_config.setdefault('default_buffer', getattr(CFG, 'BUFFER_ACTIVITY_SLIDE', 5.0))
     if 'blacklist' in llm_config:
         val = llm_config['blacklist']; display_str = ""
@@ -568,6 +563,7 @@ def save_settings():
     logger.info("Attempting to save settings")
     form_data = request.form.to_dict()
     
+    # Process Blacklist
     raw_text = form_data.get('blacklist', '')
     blacklist_dict = {}
     for line in raw_text.splitlines():
@@ -577,6 +573,7 @@ def save_settings():
             val = parts[1].strip() if len(parts) > 1 else ""
             blacklist_dict[key] = val
 
+    # LLM Settings
     llm_keys = [
         'agent_1_provider', 'agent_2_provider', 'agent_3_provider',
         'gemini_api_key', 'openai_api_key', 'anthropic_api_key', 'groq_api_key', 'mistral_api_key',
@@ -587,6 +584,7 @@ def save_settings():
     llm_config = {k: form_data.get(k, '') for k in llm_keys}
     llm_config['blacklist'] = blacklist_dict
 
+    # Brand Settings
     raw_headers = form_data.get('required_headers', '')
     headers_list = [h.strip() for h in raw_headers.splitlines() if h.strip()]
     
